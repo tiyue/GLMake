@@ -1,7 +1,7 @@
 # GLMake：立项调研草案
 
 - 文档编号：GLMAKE-INIT-001
-- 版本：0.45
+- 版本：0.46
 - 状态：阶段 1 已重新通过 / 阶段 2 进行中（服务器轮待补） / 技术设计与开发已获授权启动（§3.16）
 - 当前阶段：阶段 5 技术设计 + 阶段 7 开发（垂直切片 M1）
 - 首次调研日期：2026-08-05
@@ -658,6 +658,26 @@ M1 已知限制（不属发布承诺）：编辑器为原生 textarea（5 MB 以
 - 移动端：窄屏切换按钮随视口响应；双栏在 ≤900px 堆叠。证据 `experiments/evidence/m3-smoke/`。
 
 M4 待办：服务器轮门禁、Chrome/Edge/Firefox/Safari 兼容矩阵、部署文档、发布准备。
+
+### 3.20 服务器轮与公网 HTTP 验证（2026-08-06）
+
+产品负责人提供目标 ECS 执行条件后，服务器轮在真实环境完成：
+
+- 环境：Alibaba Cloud Linux 2（glibc 2.17），2 vCPU Xeon / 1.95 GiB / 34 GB 可用；
+  Node 官方二进制不兼容该系统，改用 unofficial glibc-217 构建 v22.17.0（含 node:sqlite），
+  部署文档已同步修正。
+- 试验：E1–E11 全部 PASS（证据 `experiments/evidence/2026-08-06-ecs-r1/`）；S2 门禁
+  （列表/搜索/无变更同步）全部成立。
+- 凭据：scrypt N=32768/r=8/p=1 在 ECS 实测 ≈140 ms（32 MB 内存成本），符合 OWASP
+  基线，已设为默认；Argon2id 待零依赖实现可用时重评。
+- 公网 HTTP：云厂商封禁 80 端口，实例改用 8899；应用监听 0.0.0.0。非安全上下文实测：
+  `isSecureContext=false`、异步剪贴板不可用（粘贴走 paste 事件降级路径，已验证）、
+  登录/编辑/同步/预览正常（DOM 快照证据 `experiments/evidence/ecs-public/`）。
+- 真实 Chrome（headless）对公网实例复测：5 MB 键入 P95 4.4 ms（门槛 100 ms，成立）；
+  首载 11.3 s 受 3 Mbit/s 出网带宽限制，与本地优先模型预期一致。
+
+仍待补：Firefox/Safari/Android Chrome 真机复核（产品负责人设备，清单见 deploy.md §8）；
+正式发布与版本标签。
 
 ## 4. “仿写”的三种不同理解
 

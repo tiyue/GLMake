@@ -1,0 +1,56 @@
+{
+  "round": "2026-08-06-ecs-r1",
+  "env": {
+    "time": "2026-08-05T22:47:06.458Z",
+    "platform": "Linux 4.19.91-28.5.al7.x86_64 x64",
+    "node": "v22.17.0",
+    "cpus": "Intel(R) Xeon(R) Platinum",
+    "cpuCount": 2,
+    "totalMemBytes": 1955704832,
+    "freeMemBytes": 1042735104,
+    "note": "桌面预检轮：非目标服务器，结果仅为观察级",
+    "diskDf": "Filesystem     1K-blocks    Used Available Use% Mounted on\n/dev/vda1       41152812 4958716  34290388  13% /"
+  },
+  "summary": [
+    {
+      "id": "E1",
+      "status": "PASS",
+      "wallMs": 132
+    },
+    {
+      "id": "E2",
+      "status": "PASS",
+      "wallMs": 169
+    },
+    {
+      "id": "E3",
+      "status": "PASS",
+      "wallMs": 53
+    },
+    {
+      "id": "E4",
+      "status": "PASS",
+      "wallMs": 1322
+    },
+    {
+      "id": "E5",
+      "status": "PASS",
+      "wallMs": 910
+    },
+    {
+      "id": "E6",
+      "status": "PASS",
+      "wallMs": 2449
+    },
+    {
+      "id": "E10",
+      "status": "PASS",
+      "wallMs": 255
+    },
+    {
+      "id": "E11",
+      "status": "PASS",
+      "wallMs": 58
+    }
+  ]
+}

@@ -8,28 +8,34 @@
 
 - 服务器：阿里云 ECS（首套验证环境 Alibaba Cloud Linux 2.1903 LTS 64 位；其他
   Linux 同等适用），建议 ≥2 vCPU / 2 GiB 内存 / 40 GiB 系统盘。
-- 运行时：Node.js ≥ 22.5（内置 `node:sqlite`）。**运行期零第三方依赖，无需 npm。**
+- 运行时：Node.js ≥ 22.13（内置 `node:sqlite`）。**运行期零第三方依赖，无需 npm。**
+  注意：Alibaba Cloud Linux 2（glibc 2.17）无法运行 Node 官方二进制（需 glibc ≥2.28），
+  必须使用 unofficial 的 glibc-217 构建（已在目标服务器实测 v22.17.0 可用，含 node:sqlite）：
+
+  ```bash
+  curl -fsSLo /opt/node22.tar.xz https://unofficial-builds.nodejs.org/download/release/v22.17.0/node-v22.17.0-linux-x64-glibc-217.tar.xz
+  tar -xf /opt/node22.tar.xz -C /opt && ln -sf /opt/node-v22.17.0-linux-x64-glibc-217/bin/node /usr/local/bin/node
+  ```
 - 部署前必读 `docs/privacy.md`：默认公网 HTTP、静态数据与导出包不加密；只存放可接受
   泄露的非重要文件；使用 GLMake 专用独立密码。
 
 ## 2. 全新服务器安装
 
 ```bash
-# 1) 安装 Node.js 22+（以系统包管理器或官方二进制为准，示例为二进制解压）
-cd /opt && curl -fsSLO https://nodejs.org/dist/v24.16.0/node-v24.16.0-linux-x64.tar.xz
-tar -xf node-v24.16.0-linux-x64.tar.xz && ln -s /opt/node-v24.16.0-linux-x64/bin/node /usr/local/bin/node
-
+# 1) 安装 Node.js 22（glibc-217 构建，见上）
 # 2) 获取源码（公开仓库）
-git clone https://github.com/<账号>/GLMake.git /opt/glmake && cd /opt/glmake
+git clone https://github.com/tiyue/GLMake.git /opt/glmake && cd /opt/glmake
 
 # 3) 准备数据目录（与代码分离）
 mkdir -p /var/lib/glmake && chmod 700 /var/lib/glmake
 
 # 4) 启动（首次访问页面时建立所有者账户并展示一次性恢复码，请立即抄存）
-GLMAKE_DATA=/var/lib/glmake PORT=80 nohup node server/app.mjs > /var/log/glmake.log 2>&1 &
+GLMAKE_DATA=/var/lib/glmake PORT=80 nohup node --no-warnings server/app.mjs > /var/log/glmake.log 2>&1 &
 ```
 
 - 端口 80 需 root 或 `setcap`；也可用 8787 等非特权端口。
+  注意：阿里云未备案实例封禁 80/443 入方向；首套实例使用 8899（安全组已放行）。
+  应用监听 0.0.0.0；更换端口只需改 `PORT` 并在安全组放行。
 - 进程管理：可用 systemd unit（示例见 §6）。无需数据库服务、对象存储或消息队列。
 
 ## 3. 首次使用
@@ -92,9 +98,16 @@ WantedBy=multi-user.target
 | 浏览器 | 状态 | 证据 |
 | --- | --- | --- |
 | Chromium 系（内嵌 148 / Edge 151 headless） | 已验证（观察级） | 阶段 2 试验与 M1–M3 冒烟 |
-| Chrome / Edge 最近两个稳定版（有界面） | 待服务器轮复测 | — |
-| Firefox | 未验证（本机未安装） | 外部阻塞 |
-| Safari / iOS Safari | 未验证（需 macOS/真机） | 外部阻塞 |
-| Android Chrome | 未验证 | 外部阻塞 |
+| Chrome（headless，公网 HTTP 实例） | 已验证：5 MB 键入 P95 4.4 ms；非安全上下文降级正常 | `experiments/evidence/ecs-public/chrome-public-check.json` |
+| Edge/Chrome 最近两个稳定版（有界面） | 待产品负责人本机人工复核 | 清单见下 |
+| Firefox | 未验证 | 人工清单 |
+| Safari / iOS Safari | 未验证（需 macOS/真机） | 人工清单 |
+| Android Chrome | 未验证（需真机） | 人工清单 |
 
-正式发布前必须在目标环境补齐上表"待复测/未验证"项（立项 §3.16 红线）。
+人工复核清单（有界面/真机，每浏览器约 5 分钟）：
+
+1. 打开 `http://<IP>:8899/`，登录；新建文档并输入中文/表格/公式，确认预览渲染。
+2. Ctrl+V 粘贴一张图片，确认上传并内联显示；粘贴文本正常。
+3. 断开网络：继续编辑并确认状态栏提示；恢复网络后 Ctrl+S 同步成功。
+4. 窄屏（手机）：侧栏收起、双栏堆叠、系统菜单可展开收起。
+5. light/dark/跟随系统切换正常。

@@ -78,14 +78,15 @@ function rateLimited(ip) {
 
 // ---------- 凭据 ----------
 function scryptHash(password, salt) {
-  return crypto.scryptSync(password, salt, 64, { N: 16384, r: 8, p: 1 }).toString('hex');
+  // 参数于目标 ECS 实测：N=32768/r=8/p=1 ≈140 ms，32 MB 内存成本，符合 OWASP scrypt 基线
+  return crypto.scryptSync(password, salt, 64, { N: 32768, r: 8, p: 1, maxmem: 128 * 1024 * 1024 }).toString('hex');
 }
 export function ownerExists() { return fs.existsSync(CONFIG); }
 export function createOwner(username, password) {
   const salt = crypto.randomBytes(16).toString('hex');
   const recovery = crypto.randomBytes(24).toString('hex');
   const cfg = {
-    username, salt, hashAlgo: 'scrypt-N16384-r8-p1',
+    username, salt, hashAlgo: 'scrypt-N32768-r8-p1',
     passHash: scryptHash(password, salt),
     recoveryHash: sha256(Buffer.from(recovery)),
     createdAt: now(),
@@ -524,7 +525,7 @@ function escapeHtml(s) {
 
 export function startServer(port = PORT) {
   const server = http.createServer((req, res) => { handle(req, res); });
-  return new Promise((resolve) => server.listen(port, '127.0.0.1', () => resolve(server)));
+  return new Promise((resolve) => server.listen(port, '0.0.0.0', () => resolve(server)));
 }
 
 export function stopServer(server) {

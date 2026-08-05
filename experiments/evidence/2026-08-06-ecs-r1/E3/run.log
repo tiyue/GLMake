@@ -1,0 +1,72 @@
+exit=0 wallMs=53
+
+--- stdout ---
+{
+  "checks": [
+    {
+      "name": "A 基于最新修订提交成功",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "B 的过期写入返回冲突",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "冲突后服务器版本未被覆盖",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "B 的草稿已保留到 conflicts",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "另存后本地版内容完整",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "另存后云端版内容完整",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "100 次相同请求只应用 1 次",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "版本表只新增一条",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "最终修订号为 3",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "幂等键只有一条记录",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "最终正文正确",
+      "pass": true,
+      "detail": ""
+    }
+  ],
+  "contentHashes": {
+    "B2": "f461f4bb9f2ff49d40d27b48d31197fd0e3656499e8ed7d744bf56ca68e98012",
+    "B3": "e027aa5a93f8acb4489e30f3074316c597e5e495fdcd51ced0d3a0113b487382",
+    "B4": "10420b22008ef3cb05b2b641f085d381695425e15e7b368778618e0ae167d6d7"
+  },
+  "pass": true
+}
+
+--- stderr ---
+(node:17994) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)

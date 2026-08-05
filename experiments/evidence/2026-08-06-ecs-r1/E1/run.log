@@ -1,0 +1,43 @@
+exit=0 wallMs=132
+
+--- stdout ---
+{
+  "journalMode": {
+    "journal_mode": "wal"
+  },
+  "import": {
+    "docs": 1000,
+    "docTags": 2000,
+    "importMs": 11.4,
+    "wallMs": 85
+  },
+  "singleUpdates": {
+    "count": 500,
+    "failures": 0,
+    "p50ms": 0.023,
+    "p95ms": 0.046,
+    "maxMs": 25.183
+  },
+  "integrityCheck": {
+    "integrity_check": "ok"
+  },
+  "quotaLogic": {
+    "singleDocLimitBytes": 10000000,
+    "oversizeSampleBytes": 10000001,
+    "singleDocRejectCorrect": true,
+    "totalLimitScaledBytes": 50000000,
+    "currentTotalBytes": 50000000,
+    "incomingDocBytes": 5000000,
+    "totalRejectCorrect": true
+  },
+  "dbFileBytes": 839680,
+  "peakRssBytes": 60051456,
+  "pass": true,
+  "_hashes": {
+    "e1.db": "4af8b0b3f66c16fd0d19b55a24eee7e5e27f55750b7b40bb9b44eea789664175"
+  }
+}
+
+--- stderr ---
+(node:17952) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)

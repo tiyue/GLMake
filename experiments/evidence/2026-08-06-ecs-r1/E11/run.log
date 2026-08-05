@@ -1,0 +1,72 @@
+exit=0 wallMs=58
+
+--- stdout ---
+{
+  "sessionMaxAgeDays": 30,
+  "checks": [
+    {
+      "name": "新会话有效",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "30 天边界内会话有效",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "超过 30 天会话失效",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "退出所有设备后旧会话全部失效",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "恢复码首次使用成功",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "恢复码第二次使用被拒",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "恢复后既有会话失效",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "分享链接创建后只读可访问",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "分享默认不自动过期",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "撤销后原链接不可读取",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "迁移后旧分享链接全部无效",
+      "pass": true,
+      "detail": ""
+    }
+  ],
+  "pass": true,
+  "limitations": [
+    "逻辑层模型试验；真实 HTTP Cookie/限速/响应头属服务器轮",
+    "凭据仅存哈希，符合立项基线"
+  ]
+}
+
+--- stderr ---
+(node:18099) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)

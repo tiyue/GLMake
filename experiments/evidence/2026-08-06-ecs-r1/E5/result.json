@@ -1,0 +1,38 @@
+{
+  "trial": "E5",
+  "env": {
+    "time": "2026-08-05T22:47:09.046Z",
+    "platform": "Linux 4.19.91-28.5.al7.x86_64 x64",
+    "node": "v22.17.0",
+    "cpus": "Intel(R) Xeon(R) Platinum",
+    "cpuCount": 2,
+    "totalMemBytes": 1955704832,
+    "freeMemBytes": 1014087680,
+    "note": "桌面预检轮：非目标服务器，结果仅为观察级"
+  },
+  "snapshotMs": 11.01,
+  "writerStats": {
+    "writes": 147,
+    "busyErrors": 0
+  },
+  "maxRevisionAfterSnapshot": 3,
+  "snapshot": {
+    "integrityCheck": {
+      "integrity_check": "ok"
+    },
+    "documents": 1000,
+    "docTags": 2000,
+    "notebooks": 20,
+    "maxRevision": 3,
+    "orphanDocTags": 0,
+    "fileBytes": 819200
+  },
+  "pass": true,
+  "_hashes": {
+    "e5-snapshot.db": "e63b590c547c8d582d29ba46b6388d8e1111ff7ad51929bd7bb245266f301190"
+  },
+  "limitations": [
+    "VACUUM INTO 与 Online Backup API 语义接近但不等同；Online Backup API 需驱动支持，本轮以 VACUUM INTO 作为候选验证",
+    "桌面机并发规模（单写入 worker），服务器轮需在 2 vCPU / 2 GiB 环境复测"
+  ]
+}

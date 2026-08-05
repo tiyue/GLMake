@@ -1,0 +1,16 @@
+{
+  "browser": "Chrome headless（本机真实安装）",
+  "base": "http://39.105.48.52:8899",
+  "seed": {
+    "created": 409,
+    "secure": false,
+    "clipboard": false
+  },
+  "openMs": 11304,
+  "stats": {
+    "n": 10,
+    "p50": 1.5,
+    "p95": 4.399999976158142,
+    "max": 4.399999976158142
+  }
+}

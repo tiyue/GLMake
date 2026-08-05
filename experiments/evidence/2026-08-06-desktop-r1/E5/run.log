@@ -1,0 +1,32 @@
+exit=0 wallMs=989
+
+--- stdout ---
+{
+  "snapshotMs": 10.03,
+  "writerStats": {
+    "writes": 52,
+    "busyErrors": 0
+  },
+  "maxRevisionAfterSnapshot": 3,
+  "snapshot": {
+    "integrityCheck": {
+      "integrity_check": "ok"
+    },
+    "documents": 1000,
+    "docTags": 2000,
+    "notebooks": 20,
+    "maxRevision": 3,
+    "orphanDocTags": 0,
+    "fileBytes": 819200
+  },
+  "pass": true,
+  "_hashes": {
+    "e5-snapshot.db": "d44ed07cf01ff8f0da172001af100e5626ba4a95137bf5083d04de1c1db5db4b"
+  },
+  "limitations": [
+    "VACUUM INTO 与 Online Backup API 语义接近但不等同；Online Backup API 需驱动支持，本轮以 VACUUM INTO 作为候选验证",
+    "桌面机并发规模（单写入 worker），服务器轮需在 2 vCPU / 2 GiB 环境复测"
+  ]
+}
+
+--- stderr ---

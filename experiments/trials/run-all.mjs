@@ -30,6 +30,8 @@ const trials = [
   ['E4', 'e4-attachment-pipeline.mjs'],
   ['E5', 'e5-snapshot.mjs'],
   ['E6', 'e6-export-import.mjs'],
+  ['E10', 'e10-version-trash.mjs'],
+  ['E11', 'e11-share-session.mjs'],
 ];
 
 const summary = [];

@@ -8,14 +8,15 @@
 
 | 文档 | 角色 | 状态 |
 | --- | --- | --- |
-| `docs/project-charter.md` | 立项调研草案（权威：决策、边界、门禁、未知项） | 版本 0.38，阶段 2 进行中 |
-| `docs/tech-trials-prep.md` | 阶段 2 技术试验准备与执行结论（GLMAKE-TRIAL-001） | 已确认，第 1 轮桌面预检已完成 |
+| `docs/project-charter.md` | 立项调研草案（权威：决策、边界、门禁、未知项） | 版本 0.40，阶段 2 进行中 |
+| `docs/tech-trials-prep.md` | 阶段 2 技术试验准备与执行结论（GLMAKE-TRIAL-001） | 已确认，第 1–3 轮与浏览器轮已完成 |
 
 ## 技术试验（experiments/）
 
 - 固定样本生成：`node experiments/tools/gen-samples.mjs`（固定种子，可重复复现）
 - 整轮试验：`node experiments/trials/run-all.mjs --round <轮次编号>`
-- 单项试验：`experiments/trials/e1…e6`，说明见 `docs/tech-trials-prep.md` §4
+- 单项试验：`experiments/trials/e1…e6、e10、e11`，说明见 `docs/tech-trials-prep.md` §4
+- 浏览器侧 harness：`experiments/browser/harness.html`（本地 `python -m http.server` 后访问）
 - 证据（只增不改，随仓库提交）：`experiments/evidence/<轮次编号>/`
 - 清理（只删可再生成的产物）：`node experiments/tools/cleanup.mjs`
 - 依赖：Node.js ≥ 22.5（`node:sqlite`）、Python ≥ 3.11（仅 E6 交叉验证）；无第三方包。

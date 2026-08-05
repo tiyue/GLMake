@@ -1,0 +1,56 @@
+{
+  "round": "2026-08-06-desktop-r2",
+  "env": {
+    "time": "2026-08-05T20:19:46.038Z",
+    "platform": "Windows_NT 10.0.19045 x64",
+    "node": "v24.16.0",
+    "cpus": "AMD Ryzen 7 3700X 8-Core Processor             ",
+    "cpuCount": 16,
+    "totalMemBytes": 34306215936,
+    "freeMemBytes": 11537252352,
+    "note": "桌面预检轮：非目标服务器，结果仅为观察级",
+    "diskDf": "Filesystem      1K-blocks       Used Available Use% Mounted on\nD:             1953497084 1506294340 447202744  78% /d"
+  },
+  "summary": [
+    {
+      "id": "E1",
+      "status": "PASS",
+      "wallMs": 179
+    },
+    {
+      "id": "E2",
+      "status": "PASS",
+      "wallMs": 220
+    },
+    {
+      "id": "E3",
+      "status": "PASS",
+      "wallMs": 114
+    },
+    {
+      "id": "E4",
+      "status": "PASS",
+      "wallMs": 546
+    },
+    {
+      "id": "E5",
+      "status": "PASS",
+      "wallMs": 988
+    },
+    {
+      "id": "E6",
+      "status": "PASS",
+      "wallMs": 1442
+    },
+    {
+      "id": "E10",
+      "status": "PASS",
+      "wallMs": 356
+    },
+    {
+      "id": "E11",
+      "status": "PASS",
+      "wallMs": 108
+    }
+  ]
+}

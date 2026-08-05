@@ -1,0 +1,74 @@
+{
+  "trial": "E6",
+  "env": {
+    "time": "2026-08-05T20:19:49.545Z",
+    "platform": "Windows_NT 10.0.19045 x64",
+    "node": "v24.16.0",
+    "cpus": "AMD Ryzen 7 3700X 8-Core Processor             ",
+    "cpuCount": 16,
+    "totalMemBytes": 34306215936,
+    "freeMemBytes": 11309420544,
+    "note": "桌面预检轮：非目标服务器，结果仅为观察级"
+  },
+  "zipEntries": 29,
+  "zipBytes": 101019530,
+  "documents": 20,
+  "attachments": 8,
+  "pythonCrossCheck": {
+    "testzip_bad": null,
+    "count": 29,
+    "entry_hash": "e7684e901b40cca3e4789b84552bed05404c8d8cfb31fdc56c2845283ec42b8f",
+    "entry": "attachments/e7684e901b40cca3e4789b84552bed05404c8d8cfb31fdc56c2845283ec42b8f"
+  },
+  "checks": [
+    {
+      "name": "导出包生成成功",
+      "pass": true,
+      "detail": "entries=29"
+    },
+    {
+      "name": "导入条目数量一致",
+      "pass": true,
+      "detail": "extracted=29"
+    },
+    {
+      "name": "全部文档正文逐字节一致",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "全部附件哈希与大小一致",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "不含密码/会话/分享凭据字段",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "路径穿越条目被拒绝",
+      "pass": true,
+      "detail": "不安全条目被拒绝：../evil.md"
+    },
+    {
+      "name": "攻击包未落盘任何文件",
+      "pass": true,
+      "detail": "[]"
+    },
+    {
+      "name": "Python zipfile 交叉读取一致",
+      "pass": true,
+      "detail": "{\"testzip_bad\":null,\"count\":29,\"entry_hash\":\"e7684e901b40cca3e4789b84552bed05404c8d8cfb31fdc56c2845283ec42b8f\",\"entry\":\"attachments/e7684e901b40cca3e4789b84552bed05404c8d8cfb31fdc56c2845283ec42b8f\"}"
+    }
+  ],
+  "pass": true,
+  "_hashes": {
+    "trial.glmake.zip": "4202781219e9a20f80103ddaf5ab558c6c12d32aaba06b72f6c390d8cfe8a67f"
+  },
+  "limitations": [
+    "桌面缩放：导出包约 101 MB；接近 500 MB 与 12 GB 上限的迁移演练属服务器轮",
+    "ZIP64 大于 4 GB 条目的代码路径已实现但未实测（桌面轮无法产生该规模数据）",
+    "HTTP Range 续传下载属服务端交付方式，本轮不涉及"
+  ]
+}

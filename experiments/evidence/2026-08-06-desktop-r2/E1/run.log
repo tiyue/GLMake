@@ -1,0 +1,41 @@
+exit=0 wallMs=179
+
+--- stdout ---
+{
+  "journalMode": {
+    "journal_mode": "wal"
+  },
+  "import": {
+    "docs": 1000,
+    "docTags": 2000,
+    "importMs": 10.7,
+    "wallMs": 78
+  },
+  "singleUpdates": {
+    "count": 500,
+    "failures": 0,
+    "p50ms": 0.04,
+    "p95ms": 0.097,
+    "maxMs": 16.56
+  },
+  "integrityCheck": {
+    "integrity_check": "ok"
+  },
+  "quotaLogic": {
+    "singleDocLimitBytes": 10000000,
+    "oversizeSampleBytes": 10000001,
+    "singleDocRejectCorrect": true,
+    "totalLimitScaledBytes": 50000000,
+    "currentTotalBytes": 50000000,
+    "incomingDocBytes": 5000000,
+    "totalRejectCorrect": true
+  },
+  "dbFileBytes": 839680,
+  "peakRssBytes": 46030848,
+  "pass": true,
+  "_hashes": {
+    "e1.db": "8eb0b944a2a7313dc2866af5124bad4a94dadfefdace08efeced69f81460c3dc"
+  }
+}
+
+--- stderr ---

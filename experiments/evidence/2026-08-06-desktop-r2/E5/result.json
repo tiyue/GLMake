@@ -1,0 +1,38 @@
+{
+  "trial": "E5",
+  "env": {
+    "time": "2026-08-05T20:19:48.104Z",
+    "platform": "Windows_NT 10.0.19045 x64",
+    "node": "v24.16.0",
+    "cpus": "AMD Ryzen 7 3700X 8-Core Processor             ",
+    "cpuCount": 16,
+    "totalMemBytes": 34306215936,
+    "freeMemBytes": 11523682304,
+    "note": "桌面预检轮：非目标服务器，结果仅为观察级"
+  },
+  "snapshotMs": 11.11,
+  "writerStats": {
+    "writes": 51,
+    "busyErrors": 0
+  },
+  "maxRevisionAfterSnapshot": 3,
+  "snapshot": {
+    "integrityCheck": {
+      "integrity_check": "ok"
+    },
+    "documents": 1000,
+    "docTags": 2000,
+    "notebooks": 20,
+    "maxRevision": 2,
+    "orphanDocTags": 0,
+    "fileBytes": 819200
+  },
+  "pass": true,
+  "_hashes": {
+    "e5-snapshot.db": "4c424002d3f45840afbd330a6a53fbd0059b4589da4c83bdd2542319dba7b8b3"
+  },
+  "limitations": [
+    "VACUUM INTO 与 Online Backup API 语义接近但不等同；Online Backup API 需驱动支持，本轮以 VACUUM INTO 作为候选验证",
+    "桌面机并发规模（单写入 worker），服务器轮需在 2 vCPU / 2 GiB 环境复测"
+  ]
+}

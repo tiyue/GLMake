@@ -1,0 +1,83 @@
+{
+  "trial": "E2",
+  "env": {
+    "time": "2026-08-05T20:19:46.456Z",
+    "platform": "Windows_NT 10.0.19045 x64",
+    "node": "v24.16.0",
+    "cpus": "AMD Ryzen 7 3700X 8-Core Processor             ",
+    "cpuCount": 16,
+    "totalMemBytes": 34306215936,
+    "freeMemBytes": 11527909376,
+    "note": "桌面预检轮：非目标服务器，结果仅为观察级"
+  },
+  "importMs": 10.2,
+  "indexBuild": {
+    "rows": 1000,
+    "buildMs": 26,
+    "rebuildMs": 53,
+    "rebuildConsistent": true
+  },
+  "queries": {
+    "cn3": {
+      "text": "全文搜",
+      "expected": "hits",
+      "groundTruthHits": 0,
+      "ftsHits": 0,
+      "ftsError": null,
+      "p95ms": 0.027,
+      "match": true
+    },
+    "cn6": {
+      "text": "回收站保留",
+      "expected": "hits",
+      "groundTruthHits": 123,
+      "ftsHits": 123,
+      "ftsError": null,
+      "p95ms": 0.058,
+      "match": true
+    },
+    "en": {
+      "text": "snapshot",
+      "expected": "hits",
+      "groundTruthHits": 252,
+      "ftsHits": 252,
+      "ftsError": null,
+      "p95ms": 0.149,
+      "match": true
+    },
+    "num": {
+      "text": "2026",
+      "expected": "hits",
+      "groundTruthHits": 1000,
+      "ftsHits": 1000,
+      "ftsError": null,
+      "p95ms": 0.137,
+      "match": true
+    },
+    "mixed": {
+      "text": "abc-995",
+      "expected": "hits",
+      "groundTruthHits": 1,
+      "ftsHits": 1,
+      "ftsError": null,
+      "p95ms": 0.073,
+      "match": true
+    },
+    "cn2": {
+      "text": "搜索",
+      "expected": "limited",
+      "groundTruthHits": 132,
+      "ftsHits": 0,
+      "ftsError": null,
+      "p95ms": 0.024,
+      "match": true
+    }
+  },
+  "allQueriesBehaveAsDocumented": true,
+  "dbFileBytes": 2752512,
+  "pass": true,
+  "limitations": [
+    "trigram 对少于 3 个字符的查询存在限制（见 cn2 的实际行为记录）",
+    "桌面机观察值，不代表目标服务器性能"
+  ]
+}

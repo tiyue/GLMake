@@ -1,0 +1,59 @@
+exit=0 wallMs=356
+
+--- stdout ---
+{
+  "versionsBefore": 1100,
+  "versionsAfter": 999,
+  "removedCount": 101,
+  "historyWaterScaledBytes": 10000000,
+  "totalHistoryBytesAfter": 9996095,
+  "checks": [
+    {
+      "name": "每篇文档历史版本不超过 10",
+      "pass": true,
+      "detail": "超限文档=0"
+    },
+    {
+      "name": "无超过 30 天的历史版本",
+      "pass": true,
+      "detail": "残留=0"
+    },
+    {
+      "name": "历史版本水位不超限",
+      "pass": true,
+      "detail": "total=9996095"
+    },
+    {
+      "name": "当前版本未被历史清理删除",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "水位清理从最旧开始",
+      "pass": true,
+      "detail": "water 移除=1"
+    },
+    {
+      "name": "普通删除进入回收站",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "30 天内可恢复",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "永久删除后活动入口不可读取",
+      "pass": true,
+      "detail": ""
+    }
+  ],
+  "pass": true,
+  "limitations": [
+    "桌面缩放水位 10 MB；5 GB 全量与真实时间推进属服务器轮",
+    "30 天以合成时间戳模拟，非真实等待"
+  ]
+}
+
+--- stderr ---

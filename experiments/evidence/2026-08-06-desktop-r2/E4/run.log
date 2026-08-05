@@ -1,0 +1,144 @@
+exit=0 wallMs=546
+
+--- stdout ---
+{
+  "maxAttachmentBytes": 50000000,
+  "perCase": {
+    "S4/big-a.bin": {
+      "stored": true,
+      "hash": "e7684e901b40cca3e4789b84552bed05404c8d8cfb31fdc56c2845283ec42b8f",
+      "size": 50000000,
+      "objectPath": "D:\\马克飞象-私人版\\experiments\\work\\store\\objects\\e7\\e7684e901b40cca3e4789b84552bed05404c8d8cfb31fdc56c2845283ec42b8f"
+    },
+    "S4/dup-b.bin": {
+      "deduped": true,
+      "hash": "e7684e901b40cca3e4789b84552bed05404c8d8cfb31fdc56c2845283ec42b8f",
+      "size": 50000000
+    },
+    "S4/empty.bin": {
+      "stored": true,
+      "hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0,
+      "objectPath": "D:\\马克飞象-私人版\\experiments\\work\\store\\objects\\e3\\e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "S4/img.png": {
+      "stored": true,
+      "hash": "911a965a2922cdc75354ef65b3ea582b9ec9fb0676a79a092f99d6233d9eb83b",
+      "size": 1000000,
+      "objectPath": "D:\\马克飞象-私人版\\experiments\\work\\store\\objects\\91\\911a965a2922cdc75354ef65b3ea582b9ec9fb0676a79a092f99d6233d9eb83b"
+    },
+    "S4/page.html": {
+      "stored": true,
+      "hash": "309dbfc6cc5dd4d273e85d33c8086bdf3e04302c132b838a00932417d3b00860",
+      "size": 73,
+      "objectPath": "D:\\马克飞象-私人版\\experiments\\work\\store\\objects\\30\\309dbfc6cc5dd4d273e85d33c8086bdf3e04302c132b838a00932417d3b00860"
+    },
+    "S4/art.svg": {
+      "stored": true,
+      "hash": "882823eb30b589f4a830703b8cf0885f65e727f7520b78f45a04aa6b6f787c11",
+      "size": 78,
+      "objectPath": "D:\\马克飞象-私人版\\experiments\\work\\store\\objects\\88\\882823eb30b589f4a830703b8cf0885f65e727f7520b78f45a04aa6b6f787c11"
+    },
+    "S4/script.js": {
+      "stored": true,
+      "hash": "644d1b3abd9839c73e8afedfbd47f7c9eedbbcb76e7e88c1bb5977ec825d42ac",
+      "size": 33,
+      "objectPath": "D:\\马克飞象-私人版\\experiments\\work\\store\\objects\\64\\644d1b3abd9839c73e8afedfbd47f7c9eedbbcb76e7e88c1bb5977ec825d42ac"
+    },
+    "S4/app.exe": {
+      "stored": true,
+      "hash": "4b139b9504729acdcd6604a9a5e270a1964d4adbd0d8862e61a4ad3fd53be755",
+      "size": 2048,
+      "objectPath": "D:\\马克飞象-私人版\\experiments\\work\\store\\objects\\4b\\4b139b9504729acdcd6604a9a5e270a1964d4adbd0d8862e61a4ad3fd53be755"
+    }
+  },
+  "oversize": {
+    "rejected": true,
+    "reason": "size_exceeded",
+    "observedBytes": 50000001
+  },
+  "objectCount": 7,
+  "checks": [
+    {
+      "name": "S4/big-a.bin 哈希与大小一致",
+      "pass": true,
+      "detail": "hash=e7684e901b40 size=50000000"
+    },
+    {
+      "name": "S4/dup-b.bin 哈希与大小一致",
+      "pass": true,
+      "detail": "hash=e7684e901b40 size=50000000"
+    },
+    {
+      "name": "S4/empty.bin 哈希与大小一致",
+      "pass": true,
+      "detail": "hash=e3b0c44298fc size=0"
+    },
+    {
+      "name": "S4/img.png 哈希与大小一致",
+      "pass": true,
+      "detail": "hash=911a965a2922 size=1000000"
+    },
+    {
+      "name": "S4/page.html 哈希与大小一致",
+      "pass": true,
+      "detail": "hash=309dbfc6cc5d size=73"
+    },
+    {
+      "name": "S4/art.svg 哈希与大小一致",
+      "pass": true,
+      "detail": "hash=882823eb30b5 size=78"
+    },
+    {
+      "name": "S4/script.js 哈希与大小一致",
+      "pass": true,
+      "detail": "hash=644d1b3abd98 size=33"
+    },
+    {
+      "name": "S4/app.exe 哈希与大小一致",
+      "pass": true,
+      "detail": "hash=4b139b950472 size=2048"
+    },
+    {
+      "name": "重复二进制命中去重",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "同内容只存一个物理对象",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "超限附件被拒绝",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "超限附件无正式对象",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "临时目录无残留",
+      "pass": true,
+      "detail": "残留=[]"
+    },
+    {
+      "name": "物理对象数量为 7",
+      "pass": true,
+      "detail": "实际=7"
+    },
+    {
+      "name": "对象读回哈希一致",
+      "pass": true,
+      "detail": ""
+    }
+  ],
+  "pass": true,
+  "limitations": [
+    "桌面缩放样本（总量约 101 MB）；500 MB 全量属服务器轮"
+  ]
+}
+
+--- stderr ---

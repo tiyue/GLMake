@@ -14,7 +14,8 @@
 
 ## 产品代码（server/、tests/）
 
-- 启动：`GLMAKE_DATA=./data PORT=8787 node server/app.mjs`（零第三方依赖，Node ≥ 22.5）
+- 启动：`GLMAKE_DATA=./data PORT=8787 node server/app.mjs`（运行时零第三方依赖，Node ≥ 22.5）
+- 前端构建（仅构建期需 npm）：`npm i && node tools/build-frontend.mjs` → `server/static/vendor/`
 - 测试：`node --test tests/server.test.mjs`（12 项：认证/冲突/幂等/容量/附件/回收站/搜索/分享/导出导入/会话）
 - 数据目录 `data/`、`data-dev/` 永不入库（含凭据）。
 

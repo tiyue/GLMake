@@ -72,8 +72,9 @@ documents/attachments 清单含 sha256/size）+ documents/*.md + attachments/<ha
 ## 8. 里程碑
 
 - **M1（本轮）**：所有者账户、登录/会话、文档 CRUD+冲突+幂等、笔记本/标签、回收站、
-  附件上传/下载/去重/安全头、搜索、分享只读链接、全量导出/导入、基础前端与主题。
-- M2：虚拟化编辑器、完整 Markdown 方言与预览、快捷键、设置项、自动同步与四路径冲突 UI。
+  附件上传/下载/去重/安全头、搜索、分享只读链接、全量导出/导入、基础前端与主题。✅ 完成（12/12 测试）
+- M2：虚拟化编辑器、完整 Markdown 方言与预览、快捷键、设置项、自动同步与四路径冲突 UI。✅ 完成
+  （CM6+KaTeX+mermaid，MIT，vendor 入库；5 MB 键入 P95 4.7 ms；大文档降级规则见 §3.18 立项）
 - M3：版本历史 UI、PDF 导出、图片粘贴完善、移动端细节。
 - M4：服务器轮门禁、兼容矩阵、部署文档、发布。
 
@@ -81,6 +82,7 @@ documents/attachments 清单含 sha256/size）+ documents/*.md + attachments/<ha
 
 `tests/server.test.mjs`（node:test + fetch）：覆盖认证、冲突、幂等、容量拒绝、附件去重与
 安全头、回收站、分享撤销、导出/导入往返与路径穿越拒绝。每里程碑先跑试验轮脚本再跑本套件。
+前端构建：`npm i`（仅构建期）后 `node tools/build-frontend.mjs`；产物在 `server/static/vendor/`。
 
 ## 10. 回滚与升级
 

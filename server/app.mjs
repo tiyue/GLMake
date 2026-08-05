@@ -262,6 +262,17 @@ export async function handle(req, res) {
       const html = fs.readFileSync(path.join(HERE, 'static/index.html'));
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Content-Length': html.length }); res.end(html); return;
     }
+    if (p.startsWith('/vendor/')) {
+      const rel = p.slice(1);
+      if (rel.includes('..')) { json(res, 400, { error: 'bad_path' }); return; }
+      const file = path.join(HERE, 'static', rel);
+      if (!fs.existsSync(file) || !fs.statSync(file).isFile()) { json(res, 404, { error: 'not_found' }); return; }
+      const ext = path.extname(file);
+      const type = ext === '.js' ? 'text/javascript; charset=utf-8' : ext === '.css' ? 'text/css; charset=utf-8' : ext === '.woff2' ? 'font/woff2' : ext === '.woff' ? 'font/woff' : ext === '.ttf' ? 'font/ttf' : 'application/octet-stream';
+      const buf = fs.readFileSync(file);
+      res.writeHead(200, { 'Content-Type': type, 'Content-Length': buf.length, 'Cache-Control': 'no-cache' });
+      res.end(buf); return;
+    }
     if (!p.startsWith('/api/')) { json(res, 404, { error: 'not_found' }); return; }
 
     // ----- 认证相关 -----

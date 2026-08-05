@@ -1,0 +1,318 @@
+// GLMake 前端 M2：CodeMirror 6 虚拟化编辑器 + 完整方言预览 + 条件自动同步 + 四路径冲突处理
+import { basicSetup, EditorView } from 'codemirror';
+import { EditorState, Compartment } from '@codemirror/state';
+import { markdown } from '@codemirror/lang-markdown';
+import katex from 'katex';
+import mermaid from 'mermaid';
+
+mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', theme: 'neutral' });
+
+const $ = (s) => document.querySelector(s);
+const api = async (p, opts = {}) => {
+  const r = await fetch(p, { headers: { 'Content-Type': 'application/json' }, ...opts });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw Object.assign(new Error(j.error || String(r.status)), { status: r.status, body: j });
+  return j;
+};
+
+const settings = Object.assign({ theme: 'system', fontSize: 14, autoSync: false }, JSON.parse(localStorage.getItem('glmake-settings') || '{}'));
+function saveSettings() { localStorage.setItem('glmake-settings', JSON.stringify(settings)); applyTheme(); applyFont(); }
+function applyTheme() {
+  const dark = settings.theme === 'dark' || (settings.theme === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
+  document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+  if (view) view.dispatch({ effects: [themeCompartment.reconfigure(dark ? darkTheme : [])] });
+}
+function applyFont() { document.documentElement.style.setProperty('--editor-font-size', settings.fontSize + 'px'); }
+
+// ---------- 状态 ----------
+let view = null;
+let current = null;            // {doc_id, revision, title}
+const dirty = new Map();       // docId -> {body, title, base}
+let lastSyncCheck = 0;
+const AUTO_INTERVAL = 10 * 60 * 1000; // 官网基线：每 10 分钟
+
+// ---------- 编辑器 ----------
+const themeCompartment = new Compartment();
+const langCompartment = new Compartment();
+// 门禁证据（2026-08-06）：CM6+markdown 解析在 5 MB 首载 >15 s，
+// 故 >1 MB 文档降级为纯文本虚拟编辑（保留输入响应），预览 >2 MB 节流收敛。
+const darkTheme = EditorView.theme({ '&': { background: 'var(--editor-bg)', color: 'var(--editor-text)' }, '.cm-content': { caretColor: '#fff' } }, { dark: true });
+
+function createEditor() {
+  view = new EditorView({
+    parent: $('#editorHost'),
+    state: EditorState.create({
+      doc: '',
+      extensions: [
+        basicSetup, langCompartment.of([]), themeCompartment.of([]),
+        EditorView.updateListener.of((u) => {
+          if (u.docChanged) {
+            if (pendingKeyT !== null) { window.__lat.push(performance.now() - pendingKeyT); pendingKeyT = null; }
+            onEdit();
+          }
+        }),
+      ],
+    }),
+  });
+  // 键入延迟测量钩子（可信 beforeinput → 视图更新）
+  window.__lat = [];
+  view.dom.addEventListener('beforeinput', (e) => { if (e.isTrusted) pendingKeyT = performance.now(); });
+  view.dom.addEventListener('keydown', (e) => { if (e.isTrusted && e.key.length === 1) pendingKeyT = performance.now(); });
+}
+const getBody = () => view.state.doc.toString();
+function setBody(text) { view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: text } }); }
+let pendingKeyT = null;
+// 开发/验证工具：以 API 文档内容载入编辑器（供门禁复测脚本使用）
+window.__openDoc = async (id) => { await openDoc(id); };
+window.__latStats = () => { const l = [...window.__lat].sort((a, b) => a - b); const q = (p) => l.length ? l[Math.min(l.length - 1, Math.floor(p * l.length))] : null; return { n: l.length, p50: q(0.5), p95: q(0.95), max: l[l.length - 1] }; };
+
+let previewTimer = null, saveTimer = null;
+function onEdit() {
+  const big = getBody().length > 2_000_000;
+  clearTimeout(previewTimer);
+  previewTimer = setTimeout(renderPreview, big ? 1500 : 200);
+  if (big) setStatus('大文档：预览节流中，稍后收敛');
+  clearTimeout(saveTimer); saveTimer = setTimeout(() => { markDirty(); if (!big) setStatus('本地已保存，待同步'); }, 500);
+}
+function markDirty() {
+  if (!current) return;
+  dirty.set(current.doc_id, { body: getBody(), title: current.title, base: current.revision });
+  localStorage.setItem('glmake-pending', JSON.stringify([...dirty.entries()]));
+}
+function restorePending() {
+  try { for (const [k, v] of JSON.parse(localStorage.getItem('glmake-pending') || '[]')) dirty.set(k, v); } catch { /* 忽略 */ }
+}
+
+// ---------- 同步引擎 ----------
+function setStatus(t) { $('#status').textContent = t; }
+async function syncNow(reason) {
+  if (dirty.size === 0) { setStatus(`同步检查（${reason}）：无更新，未产生写入`); lastSyncCheck = Date.now(); return; }
+  let ok = 0, conflicts = 0;
+  for (const [docId, d] of [...dirty.entries()]) {
+    try {
+      const r = await api(`/api/docs/${docId}`, { method: 'PUT', body: JSON.stringify({ base_revision: d.base, body: d.body, title: d.title, request_id: crypto.randomUUID() }) });
+      dirty.delete(docId); ok++;
+      if (current && current.doc_id === docId) current.revision = r.revision;
+    } catch (e) {
+      if (e.status === 409) { conflicts++; openConflict(docId, d); }
+      else { setStatus('同步失败：' + e.message); }
+    }
+  }
+  localStorage.setItem('glmake-pending', JSON.stringify([...dirty.entries()]));
+  lastSyncCheck = Date.now();
+  setStatus(`同步（${reason}）：成功 ${ok}，冲突 ${conflicts}，待处理 ${dirty.size}`);
+  refreshList();
+}
+document.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); syncNow('手动 Ctrl+S'); }
+});
+window.addEventListener('online', () => { syncNow('恢复联网补做'); });
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && settings.autoSync && Date.now() - lastSyncCheck >= AUTO_INTERVAL) syncNow('回到前台补做');
+});
+setInterval(() => {
+  if (!settings.autoSync) return;
+  // 条件自动同步：仅当存在待同步更新时写入
+  if (dirty.size > 0) syncNow('自动 10 分钟');
+  else { lastSyncCheck = Date.now(); setStatus('自动同步检查：无更新，未产生写入'); }
+}, AUTO_INTERVAL);
+
+// ---------- 冲突四路径 ----------
+async function openConflict(docId, local) {
+  const server = await api('/api/docs/' + docId);
+  const dlg = $('#conflict');
+  dlg.hidden = false;
+  $('#cfTitle').textContent = `冲突：${server.title}（服务器修订 ${server.revision}，你的基础修订 ${local.base}）`;
+  $('#cfLocal').textContent = local.body;
+  $('#cfServer').textContent = server.body;
+  $('#conflict').dataset.doc = docId;
+  $('#conflict').dataset.serverRev = server.revision;
+  $('#conflict').dataset.localBody = local.body;
+}
+$('#cfUseLocal').onclick = async () => {
+  const dlg = $('#conflict'); const docId = dlg.dataset.doc;
+  const r = await api(`/api/docs/${docId}`, { method: 'PUT', body: JSON.stringify({ base_revision: Number(dlg.dataset.serverRev), body: dlg.dataset.localBody, request_id: crypto.randomUUID() }) });
+  dirty.delete(docId); localStorage.setItem('glmake-pending', JSON.stringify([...dirty.entries()]));
+  if (current && current.doc_id === docId) { current.revision = r.revision; }
+  dlg.hidden = true; setStatus('已使用本地版（云端旧版保留在历史版本）');
+};
+$('#cfUseServer').onclick = () => {
+  const dlg = $('#conflict'); const docId = dlg.dataset.doc;
+  setBody($('#cfServer').textContent);
+  dirty.delete(docId); localStorage.setItem('glmake-pending', JSON.stringify([...dirty.entries()]));
+  if (current && current.doc_id === docId) current.revision = Number(dlg.dataset.serverRev);
+  dlg.hidden = true; setStatus('已使用云端版'); renderPreview();
+};
+$('#cfSaveBoth').onclick = async () => {
+  const dlg = $('#conflict'); const docId = dlg.dataset.doc;
+  await api('/api/docs', { method: 'POST', body: JSON.stringify({ title: '冲突另存（本地版）', body: dlg.dataset.localBody, request_id: crypto.randomUUID() }) });
+  setBody($('#cfServer').textContent);
+  dirty.delete(docId); localStorage.setItem('glmake-pending', JSON.stringify([...dirty.entries()]));
+  dlg.hidden = true; setStatus('本地版已另存为新文档'); refreshList();
+};
+$('#cfClose').onclick = () => { $('#conflict').hidden = true; };
+
+// ---------- 预览（完整方言） ----------
+function esc(s) { return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+function inline(s) {
+  return esc(s)
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\$([^$]+)\$/g, (m, t) => { try { return katex.renderToString(t, { throwOnError: false }); } catch { return m; } })
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+    .replace(/~~([^~]+)~~/g, '<del>$1</del>')
+    .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img alt="$1" src="$2" style="max-width:100%">')
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" rel="noopener">$1</a>');
+}
+let mermaidSeq = 0;
+let previewRun = 0;
+async function renderPreview() {
+  const run = ++previewRun;
+  const md = getBody();
+  const lines = md.split('\n');
+  const host = $('#previewPane');
+  host.innerHTML = '';
+  let buf = []; let inCode = false; let codeLang = ''; let codeBuf = [];
+  let inMath = false; let mathBuf = [];
+  let chunk = '';
+  const flush = () => { if (buf.length) { chunk += '<p>' + buf.map(inline).join('<br>') + '</p>'; buf = []; } };
+  const emit = () => { if (chunk) { host.insertAdjacentHTML('beforeend', chunk); chunk = ''; } };
+  for (let li = 0; li < lines.length; li++) {
+    const line = lines[li];
+    if (inMath) { mathBuf.push(line); if (line.includes('\\]')) { const t = mathBuf.join('\n').replace(/\\\[|\\\]/g, ''); try { chunk += '<div>' + katex.renderToString(t, { throwOnError: false, displayMode: true }) + '</div>'; } catch { chunk += '<pre>' + esc(t) + '</pre>'; } inMath = false; mathBuf = []; } continue; }
+    if (inCode) {
+      if (line.startsWith('```')) {
+        const code = codeBuf.join('\n');
+        if (codeLang === 'mermaid') { const id = 'mm' + (++mermaidSeq); chunk += `<div class="mermaid" data-mm="${id}"></div>`; scheduleMermaid(id, code); }
+        else chunk += '<pre><code>' + esc(code) + '</code></pre>';
+        inCode = false; codeBuf = [];
+      } else codeBuf.push(line);
+      continue;
+    }
+    if (line.startsWith('```')) { flush(); inCode = true; codeLang = line.slice(3).trim(); continue; }
+    if (line.startsWith('\\[')) { flush(); inMath = true; mathBuf = [line]; continue; }
+    const h = line.match(/^(#{1,6})\s+(.*)/);
+    if (h) { flush(); chunk += `<h${h[1].length}>` + inline(h[2]) + `</h${h[1].length}>`; continue; }
+    if (/^>\s?/.test(line)) { flush(); chunk += '<blockquote>' + inline(line.replace(/^>\s?/, '')) + '</blockquote>'; continue; }
+    if (/^[-*] \[( |x)\] /.test(line)) { flush(); chunk += `<div><input type="checkbox" disabled ${line[3] === 'x' ? 'checked' : ''}> ${inline(line.slice(6))}</div>`; continue; }
+    if (/^[-*] /.test(line)) { flush(); chunk += '<div>• ' + inline(line.slice(2)) + '</div>'; continue; }
+    if (/^\d+\. /.test(line)) { flush(); chunk += '<div>' + inline(line) + '</div>'; continue; }
+    if (/^\|.*\|/.test(line)) {
+      flush();
+      const rows = [line];
+      while (li + 1 < lines.length && /^\|.*\|/.test(lines[li + 1])) { rows.push(lines[li + 1]); li++; }
+      const cells = (r) => r.split('|').slice(1, -1).map((c) => c.trim());
+      let t = '<table>';
+      rows.forEach((r, idx) => {
+        if (idx === 1 && /^[\s|:-]+$/.test(r)) return;
+        const tag = idx === 0 ? 'th' : 'td';
+        t += '<tr>' + cells(r).map((c) => `<${tag}>` + inline(c) + `</${tag}>`).join('') + '</tr>';
+      });
+      chunk += t + '</table>';
+      continue;
+    }
+    if (line.trim() === '') { flush(); continue; }
+    buf.push(line);
+    if (li % 4000 === 3999) { flush(); emit(); if (run !== previewRun) return; await new Promise((r) => setTimeout(r, 0)); }
+  }
+  flush(); emit();
+  if (run === previewRun) processMermaid();
+}
+const mermaidQueue = [];
+function scheduleMermaid(id, code) { mermaidQueue.push([id, code]); }
+async function processMermaid() {
+  while (mermaidQueue.length) {
+    const [id, code] = mermaidQueue.shift();
+    const el = document.querySelector(`[data-mm="${id}"]`);
+    if (!el) continue;
+    try {
+      const { svg } = await Promise.race([
+        mermaid.render('mmr' + id, code),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('渲染超时')), 5000)),
+      ]);
+      el.innerHTML = svg;
+    } catch (e) {
+      el.innerHTML = '<pre>[流程图/时序图渲染失败：' + esc(String(e.message || e)) + ']</pre>';
+    }
+  }
+}
+
+// ---------- 文档管理 ----------
+async function refreshList() {
+  const j = await api('/api/docs');
+  const list = $('#doclist'); list.innerHTML = '';
+  for (const d of j.docs) {
+    const b = document.createElement('button');
+    b.textContent = d.title + (dirty.has(d.doc_id) ? ' ●' : '');
+    if (current && current.doc_id === d.doc_id) b.classList.add('active');
+    b.onclick = () => openDoc(d.doc_id);
+    list.appendChild(b);
+  }
+}
+async function openDoc(id) {
+  const d = await api('/api/docs/' + id);
+  current = { doc_id: id, revision: d.revision, title: d.title };
+  const pend = dirty.get(id);
+  const body = pend ? pend.body : d.body;
+  view.dispatch({ effects: [langCompartment.reconfigure(body.length <= 1_000_000 ? markdown() : [])] });
+  setBody(body);
+  if (body.length > 2_000_000) { setStatus('大文档：预览将于空闲时收敛'); setTimeout(renderPreview, 500); }
+  else renderPreview();
+  refreshList();
+  setStatus(`已打开：${d.title}（修订 ${d.revision}${pend ? '，含未同步本地修改' : ''}${body.length > 1_000_000 ? '；大文档模式：语法高亮关闭' : ''}）`);
+}
+$('#btnNew').onclick = async () => {
+  const r = await api('/api/docs', { method: 'POST', body: JSON.stringify({ title: '无标题', body: '# 无标题\n', notebook: '默认笔记本', request_id: crypto.randomUUID() }) });
+  await refreshList(); openDoc(r.doc_id);
+};
+$('#search').addEventListener('input', async () => {
+  const q = $('#search').value;
+  if (q.length < 3) return refreshList();
+  const r = await api('/api/search?q=' + encodeURIComponent(q));
+  const list = $('#doclist'); list.innerHTML = '';
+  for (const d of r.results) {
+    const b = document.createElement('button'); b.textContent = d.title; b.onclick = () => openDoc(d.doc_id);
+    list.appendChild(b);
+  }
+});
+
+// ---------- 系统菜单 ----------
+document.querySelectorAll('.menu > button').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); b.parentElement.classList.toggle('open'); }));
+document.addEventListener('click', () => document.querySelectorAll('.menu.open').forEach((m) => m.classList.remove('open')));
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') document.querySelectorAll('.menu.open').forEach((m) => m.classList.remove('open')); });
+$('#sysMenu').addEventListener('click', async (e) => {
+  const act = e.target.dataset.act; if (!act) return;
+  if (act === 'theme') { settings.theme = settings.theme === 'light' ? 'dark' : settings.theme === 'dark' ? 'system' : 'light'; saveSettings(); }
+  if (act === 'font-up') { settings.fontSize = Math.min(20, settings.fontSize + 1); saveSettings(); }
+  if (act === 'font-down') { settings.fontSize = Math.max(12, settings.fontSize - 1); saveSettings(); }
+  if (act === 'autosync') { settings.autoSync = !settings.autoSync; saveSettings(); setStatus(settings.autoSync ? '自动同步已开启（每 10 分钟，仅有更新时写入）' : '自动同步已关闭'); }
+  if (act === 'sync') syncNow('手动');
+  if (act === 'trash') { const j = await api('/api/docs?deleted=1'); const list = $('#doclist'); list.innerHTML = ''; for (const d of j.docs) { const b = document.createElement('button'); b.textContent = ' ' + d.title; b.onclick = async () => { await api(`/api/docs/${d.doc_id}/restore`, { method: 'POST' }); refreshList(); }; list.appendChild(b); } }
+  if (act === 'share') { if (current) { const r = await api('/api/shares', { method: 'POST', body: JSON.stringify({ doc_id: current.doc_id }) }); setStatus('分享链接：' + location.origin + r.url + '（系统菜单可撤销）'); } }
+  if (act === 'export') { await api('/api/export', { method: 'POST' }); setStatus('导出完成'); }
+  if (act === 'logout') { await api('/api/logout', { method: 'POST' }); location.reload(); }
+  if (act === 'logoutall') { await api('/api/logout-all', { method: 'POST' }); location.reload(); }
+});
+
+// ---------- 认证 ----------
+async function boot() {
+  try {
+    await api('/api/docs');
+    $('#auth').hidden = true; $('#main').hidden = false;
+    createEditor(); applyTheme(); applyFont(); restorePending(); refreshList();
+    setStatus(settings.autoSync ? '自动同步已开启' : '就绪（Ctrl+S 手动同步）');
+  } catch (e) { console.error('boot 失败：', e); $('#auth').hidden = false; $('#main').hidden = true; $('#authMsg').textContent = 'boot 失败：' + e.message; }
+}
+$('#authSubmit').onclick = async () => {
+  const cred = { username: $('#authUser').value, password: $('#authPass').value };
+  try { await api('/api/login', { method: 'POST', body: JSON.stringify(cred) }); boot(); }
+  catch (e) {
+    if (e.status === 409) {
+      const s = await api('/api/setup', { method: 'POST', body: JSON.stringify(cred) });
+      $('#authMsg').textContent = '初始化成功，恢复码：' + s.recoveryCode + '（请立即抄存）';
+      await api('/api/login', { method: 'POST', body: JSON.stringify(cred) });
+      boot();
+    } else $('#authMsg').textContent = e.message;
+  }
+};
+boot();

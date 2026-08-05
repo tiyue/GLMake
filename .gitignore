@@ -1,2 +1,6 @@
 # 试验产物（可由固定种子重新生成），证据目录 evidence/ 需提交
 experiments/work/
+
+# 运行数据（凭据与用户数据，永不入库）
+data/
+data-dev/

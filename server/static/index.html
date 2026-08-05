@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GLMake</title>
+<style>
+:root {
+  --bg: #fafafa; --panel: #ffffff; --text: #1a1a1a; --muted: #6b6b6b;
+  --border: #e2e2e2; --accent: #2f6f4f; --danger: #b3261e;
+  --editor-bg: #202124; --editor-text: #e8eaed; --preview-bg: #ffffff;
+  --radius: 6px; --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
+}
+[data-theme="dark"] {
+  --bg: #141414; --panel: #1e1e1e; --text: #e6e6e6; --muted: #9a9a9a;
+  --border: #333; --accent: #6fbf8f; --preview-bg: #232323;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; font: 14px/1.6 system-ui, "Microsoft YaHei", sans-serif; background: var(--bg); color: var(--text); }
+button { font: inherit; border: 1px solid var(--border); background: var(--panel); color: var(--text); border-radius: var(--radius); padding: var(--space-1) var(--space-3); cursor: pointer; }
+button.danger { color: var(--danger); }
+input, textarea { font: inherit; border: 1px solid var(--border); border-radius: var(--radius); padding: var(--space-1) var(--space-2); background: var(--panel); color: var(--text); }
+header { display: flex; gap: var(--space-2); align-items: center; padding: var(--space-2) var(--space-4); border-bottom: 1px solid var(--border); background: var(--panel); }
+header h1 { font-size: 16px; margin: 0; }
+header .spacer { flex: 1; }
+#main { display: flex; height: calc(100vh - 49px); }
+#sidebar { width: 260px; border-right: 1px solid var(--border); background: var(--panel); display: flex; flex-direction: column; }
+#sidebar .tools { padding: var(--space-2); display: flex; gap: var(--space-1); flex-wrap: wrap; border-bottom: 1px solid var(--border); }
+#doclist { overflow: auto; flex: 1; }
+#doclist button { display: block; width: 100%; text-align: left; border: 0; border-radius: 0; background: none; padding: var(--space-2) var(--space-3); }
+#doclist button.active { background: var(--bg); font-weight: 600; }
+#work { flex: 1; display: flex; min-width: 0; }
+#editorPane { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+#editor { flex: 1; width: 100%; border: 0; resize: none; padding: var(--space-3); background: var(--editor-bg); color: var(--editor-text); font: 13px/1.6 Consolas, monospace; }
+#previewPane { flex: 1; overflow: auto; background: var(--preview-bg); padding: var(--space-4); border-left: 1px solid var(--border); }
+#status { padding: var(--space-1) var(--space-3); font-size: 12px; color: var(--muted); border-top: 1px solid var(--border); background: var(--panel); }
+#auth { max-width: 360px; margin: 10vh auto; padding: var(--space-4); background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); display: flex; flex-direction: column; gap: var(--space-2); }
+.menu { position: relative; }
+.menu > div { position: absolute; right: 0; top: 100%; background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); display: none; min-width: 160px; z-index: 10; }
+.menu.open > div { display: block; }
+.menu > div button { display: block; width: 100%; border: 0; border-radius: 0; text-align: left; }
+pre { background: var(--bg); padding: var(--space-2); overflow: auto; border-radius: var(--radius); }
+code { background: var(--bg); border-radius: 3px; padding: 0 4px; }
+table { border-collapse: collapse; } td, th { border: 1px solid var(--border); padding: 2px 8px; }
+@media (max-width: 900px) { #sidebar { display: none; } #sidebar.show { display: flex; position: fixed; inset: 49px 0 0 0; width: 100%; z-index: 5; } #work { flex-direction: column; } #previewPane { border-left: 0; border-top: 1px solid var(--border); } }
+</style>
+</head>
+<body>
+<header>
+  <h1>GLMake</h1>
+  <button id="btnMenuToggle" hidden>文档</button>
+  <span class="spacer"></span>
+  <span id="who" style="color:var(--muted)"></span>
+  <div class="menu" id="sysMenu">
+    <button aria-haspopup="true">系统菜单</button>
+    <div>
+      <button data-act="theme">主题：light/dark/系统</button>
+      <button data-act="export">全量导出</button>
+      <button data-act="trash">回收站</button>
+      <button data-act="logout">退出登录</button>
+      <button data-act="logoutall" class="danger">退出所有设备</button>
+    </div>
+  </div>
+</header>
+<div id="auth" hidden>
+  <h2 id="authTitle">登录</h2>
+  <input id="authUser" placeholder="用户名" autocomplete="username">
+  <input id="authPass" type="password" placeholder="密码" autocomplete="current-password">
+  <button id="authSubmit">登录</button>
+  <p id="authMsg" style="color:var(--danger);min-height:1.2em"></p>
+</div>
+<div id="main" hidden>
+  <nav id="sidebar" aria-label="文档管理">
+    <div class="tools">
+      <button id="btnNew">新建</button>
+      <input id="search" placeholder="搜索（≥3 字符）" style="flex:1;min-width:80px">
+    </div>
+    <div id="doclist"></div>
+  </nav>
+  <div id="work">
+    <div id="editorPane">
+      <textarea id="editor" spellcheck="false" aria-label="Markdown 编辑区"></textarea>
+      <div id="status">就绪</div>
+    </div>
+    <section id="previewPane" aria-label="预览"></section>
+  </div>
+</div>
+<script>
+'use strict';
+const $ = (s) => document.querySelector(s);
+const api = async (path, opts = {}) => {
+  const r = await fetch(path, { headers: { 'Content-Type': 'application/json' }, ...opts });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw Object.assign(new Error(j.error || r.status), { status: r.status, body: j });
+  return j;
+};
+let state = { docs: [], current: null, theme: localStorage.getItem('theme') || 'system' };
+
+function applyTheme() {
+  const dark = state.theme === 'dark' || (state.theme === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
+  document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+}
+applyTheme();
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
+
+// 弹出菜单：点击外部与 Escape 收起
+document.querySelectorAll('.menu > button').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); b.parentElement.classList.toggle('open'); }));
+document.addEventListener('click', () => document.querySelectorAll('.menu.open').forEach((m) => m.classList.remove('open')));
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') document.querySelectorAll('.menu.open').forEach((m) => m.classList.remove('open')); });
+
+// ---------- 基础 Markdown 渲染（M1 子集；完整方言属 M2） ----------
+function esc(s) { return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+function render(md) {
+  const lines = md.split('\n'); let html = ''; let inCode = false; let buf = [];
+  const flush = () => { if (buf.length) { html += '<p>' + buf.map(esc).join('<br>') + '</p>'; buf = []; } };
+  for (const line of lines) {
+    if (line.startsWith('```')) { flush(); if (inCode) { html += '</pre>'; inCode = false; } else { html += '<pre>'; inCode = true; } continue; }
+    if (inCode) { html += esc(line) + '\n'; continue; }
+    const h = line.match(/^(#{1,6})\s+(.*)/);
+    if (h) { flush(); html += `<h${h[1].length}>` + esc(h[2]) + `</h${h[1].length}>`; continue; }
+    if (/^>\s?/.test(line)) { flush(); html += '<blockquote>' + esc(line.replace(/^>\s?/, '')) + '</blockquote>'; continue; }
+    if (/^[-*] \[( |x)\] /.test(line)) { flush(); html += `<div><input type="checkbox" disabled ${line[3] === 'x' ? 'checked' : ''}> ${esc(line.slice(6))}</div>`; continue; }
+    if (/^[-*] /.test(line)) { flush(); html += '<div>• ' + esc(line.slice(2)) + '</div>'; continue; }
+    if (/^\d+\. /.test(line)) { flush(); html += '<div>' + esc(line) + '</div>'; continue; }
+    if (line.trim() === '') { flush(); continue; }
+    buf.push(line);
+  }
+  flush(); if (inCode) html += '</pre>';
+  return html;
+}
+
+// ---------- 视图 ----------
+async function boot() {
+  try {
+    const j = await api('/api/docs');
+    state.docs = j.docs; showApp();
+  } catch (e) {
+    if (e.status === 401 || e.status === 409) showAuth(); else $('#authMsg').textContent = e.message;
+  }
+}
+function showAuth() { $('#auth').hidden = false; $('#main').hidden = true; }
+function showApp() { $('#auth').hidden = true; $('#main').hidden = false; $('#who').textContent = '所有者'; renderList(); }
+function renderList() {
+  $('#doclist').innerHTML = '';
+  for (const d of state.docs) {
+    const b = document.createElement('button');
+    b.textContent = d.title + (d.deleted_ms ? '（回收站）' : '');
+    if (state.current === d.doc_id) b.classList.add('active');
+    b.onclick = () => openDoc(d.doc_id);
+    $('#doclist').appendChild(b);
+  }
+}
+async function openDoc(id) {
+  const d = await api('/api/docs/' + id);
+  state.current = id;
+  $('#editor').value = d.body;
+  $('#previewPane').innerHTML = render(d.body);
+  $('#status').textContent = `已打开：${d.title}（修订 ${d.revision}）`;
+  renderList();
+}
+let saveTimer = null;
+$('#editor').addEventListener('input', () => {
+  $('#previewPane').innerHTML = render($('#editor').value);
+  $('#status').textContent = '编辑中…';
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveCurrent, 800);
+});
+async function saveCurrent() {
+  if (!state.current) return;
+  try {
+    const cur = await api('/api/docs/' + state.current);
+    const r = await api('/api/docs/' + state.current, { method: 'PUT', body: JSON.stringify({ base_revision: cur.revision, body: $('#editor').value, request_id: crypto.randomUUID() }) });
+    $('#status').textContent = r.conflict ? '冲突：服务器版本更新，需处理' : `已保存（修订 ${r.revision ?? cur.revision}）`;
+  } catch (e) { $('#status').textContent = '保存失败：' + e.message; }
+}
+$('#btnNew').onclick = async () => {
+  const r = await api('/api/docs', { method: 'POST', body: JSON.stringify({ title: '无标题', body: '# 无标题\n', notebook: '默认笔记本', request_id: crypto.randomUUID() }) });
+  await refresh(); openDoc(r.doc_id);
+};
+async function refresh() { state.docs = (await api('/api/docs', {})).docs; renderList(); }
+$('#search').addEventListener('input', async () => {
+  const q = $('#search').value;
+  if (q.length < 3) { refresh(); return; }
+  const r = await api('/api/search?q=' + encodeURIComponent(q));
+  state.docs = r.results.map((x) => ({ doc_id: x.doc_id, title: x.title }));
+  renderList();
+});
+$('#authSubmit').onclick = async () => {
+  const cred = { username: $('#authUser').value, password: $('#authPass').value };
+  try {
+    await api('/api/login', { method: 'POST', body: JSON.stringify(cred) });
+    boot();
+  } catch (e) {
+    if (e.status === 409) {
+      try {
+        const s = await api('/api/setup', { method: 'POST', body: JSON.stringify(cred) });
+        $('#authMsg').style.color = 'var(--accent)';
+        $('#authMsg').textContent = '初始化成功，恢复码：' + s.recoveryCode + '（请立即抄存）';
+        await api('/api/login', { method: 'POST', body: JSON.stringify(cred) });
+        boot();
+      } catch (e2) { $('#authMsg').style.color = 'var(--danger)'; $('#authMsg').textContent = e2.message; }
+    } else { $('#authMsg').textContent = e.message; }
+  }
+};
+document.querySelector('#sysMenu').addEventListener('click', async (e) => {
+  const act = e.target.dataset.act; if (!act) return;
+  if (act === 'theme') { state.theme = state.theme === 'light' ? 'dark' : state.theme === 'dark' ? 'system' : 'light'; localStorage.setItem('theme', state.theme); applyTheme(); }
+  if (act === 'logout') { await api('/api/logout', { method: 'POST' }); location.reload(); }
+  if (act === 'logoutall') { await api('/api/logout-all', { method: 'POST' }); location.reload(); }
+  if (act === 'trash') { state.docs = (await api('/api/docs?deleted=1')).docs; renderList(); }
+  if (act === 'export') { await api('/api/export', { method: 'POST' }); $('#status').textContent = '导出完成（见下载）'; }
+});
+$('#btnMenuToggle').hidden = !matchMedia('(max-width: 900px)').matches;
+$('#btnMenuToggle').onclick = () => $('#sidebar').classList.toggle('show');
+boot();
+</script>
+</body>
+</html>

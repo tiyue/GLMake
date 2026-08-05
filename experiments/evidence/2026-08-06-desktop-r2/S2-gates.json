@@ -1,0 +1,75 @@
+{
+  "docs": 1000,
+  "list": [
+    {
+      "ms": 8,
+      "count": 1000
+    },
+    {
+      "ms": 5,
+      "count": 1000
+    },
+    {
+      "ms": 6,
+      "count": 1000
+    },
+    {
+      "ms": 5,
+      "count": 1000
+    },
+    {
+      "ms": 5,
+      "count": 1000
+    }
+  ],
+  "search": [
+    {
+      "q": "排序冲突样本",
+      "ms": 2,
+      "hits": 10
+    },
+    {
+      "q": "同步与冲突",
+      "ms": 1,
+      "hits": 100
+    },
+    {
+      "q": "S2 文档 0500",
+      "ms": 2,
+      "hits": 1
+    }
+  ],
+  "noChangeSync": {
+    "since": 0,
+    "syncTimes": [
+      {
+        "ms": 1,
+        "changes": 0
+      },
+      {
+        "ms": 1,
+        "changes": 0
+      },
+      {
+        "ms": 0,
+        "changes": 0
+      },
+      {
+        "ms": 1,
+        "changes": 0
+      },
+      {
+        "ms": 1,
+        "changes": 0
+      }
+    ],
+    "wroteNothing": true
+  },
+  "gates": {
+    "listFirstOperableRef3s": true,
+    "searchP95Ref2s": true,
+    "noChangeSyncP95Ref10s": true,
+    "noWritesOnNoChange": true
+  },
+  "note": "桌面观察级；正式门禁需在目标服务器与正式浏览器复测"
+}

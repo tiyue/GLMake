@@ -1,0 +1,46 @@
+{
+  "round": "2026-08-06-browser-r1",
+  "env": {
+    "engine": "Chromium 148.0.7778.97（Electron 42.2.0 内嵌，QoderCN 1.10.0）",
+    "platform": "Windows_NT 10.0.19045 x64",
+    "context": "http://127.0.0.1:8123（localhost 安全上下文）",
+    "note": "等效 Chromium 环境；正式门禁仍需独立 Chrome/Edge/Firefox 与公网 HTTP 非安全上下文复测（服务器轮）",
+    "harness": "experiments/browser/harness.html（原生 textarea 候选编辑控件，非产品代码）"
+  },
+  "E7": {
+    "hypothesis": "原生 textarea 在 1/5/10 MB 样本下键入到可见文本 P95 分别不高于 50/100/200 ms，且无持续 2 s 以上无法输入",
+    "result": "1MB 成立；5MB 与 10MB 不成立",
+    "perSize": {
+      "1MB": { "samples": 8, "p50ms": 17.9, "p95ms": 30.5, "maxMs": 30.5, "saveErrors": 0, "lastSaveMs": 25.2, "gateRef": "50ms", "withinGate": true },
+      "5MB": { "samples": 4, "p50ms": 154.1, "p95ms": 212.3, "maxMs": 212.3, "saveErrors": 0, "lastSaveMs": 77, "gateRef": "100ms", "withinGate": false },
+      "10MB": { "samples": 4, "p50ms": 219.7, "p95ms": 310.8, "maxMs": 310.8, "saveErrors": 0, "lastSaveMs": 129.2, "gateRef": "200ms", "withinGate": false }
+    },
+    "additionalEvidence": "5MB/10MB 页面使驱动侧 1 MB 级快照 10 s 超时，页面负载显著",
+    "conclusion": "原生 textarea 不能作为 5 MB 以上文档的编辑控件；技术设计必须采用虚拟化/分块编辑器（如 CodeMirror 6 类组件）并在服务器轮按立项门槛复测"
+  },
+  "E8": {
+    "hypothesis": "编辑内容事务写入 IndexedDB；冷启动重载后内容逐字节恢复；同步目标不可达时继续编辑并本地保存",
+    "result": "成立",
+    "restoreHashMatches": true,
+    "restoredBytes": 93,
+    "syncFailed": true,
+    "editAfterOffline": { "editingOk": true, "savedAfterOffline": true },
+    "storage": { "persistGranted": true, "quotaBytes": 458162627419, "usageBytes": 4955 }
+  },
+  "E9": {
+    "hypothesis": "普通文本粘贴与图片粘贴存在可用路径；图片经哈希后存入 IndexedDB 并可无损读回；异步剪贴板不可用不得阻断核心流程",
+    "result": "成立",
+    "pasteTextCount": 1,
+    "pasteImageCount": 1,
+    "pasteErrors": 0,
+    "imageRoundTripHashMatches": true,
+    "asyncClipboardAvailableInThisContext": true,
+    "note": "粘贴事件为页面内可信构造（DataTransfer/ClipboardEvent），真实系统剪贴板路径需在正式浏览器轮人工复核"
+  },
+  "evidenceFiles": ["harness-after-e9.png"],
+  "limitations": [
+    "浏览器为内嵌 Chromium 等效环境，非正式兼容矩阵浏览器；结果观察级",
+    "localhost 安全上下文；公网 HTTP 非安全上下文下的剪贴板/存储行为属服务器轮",
+    "5/10 MB 键入样本量小（各 4），P95 为最坏样本；趋势已足够支撑结论"
+  ]
+}

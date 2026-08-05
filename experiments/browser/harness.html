@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>GLMake 阶段 2 浏览器试验 harness（非产品代码）</title>
+<style>
+  body { margin: 0; display: flex; flex-direction: column; height: 100vh; font-family: system-ui, sans-serif; }
+  #status { padding: 6px 10px; font-size: 12px; background: #1c1c1c; color: #e6e6e6; white-space: pre; }
+  #editor { flex: 1; width: 100%; border: 0; resize: none; padding: 10px; font: 13px/1.5 Consolas, monospace; background: #202124; color: #e8eaed; box-sizing: border-box; }
+</style>
+</head>
+<body>
+<div id="status">harness 就绪</div>
+<textarea id="editor" spellcheck="false"></textarea>
+<script>
+'use strict';
+const editor = document.getElementById('editor');
+const statusEl = document.getElementById('status');
+
+const M = {
+  loaded: null,              // {path, bytes, ms}
+  latencies: [],             // 键入延迟 ms（可信 keydown → input）
+  saves: 0, saveErrors: 0, lastSaveMs: null, lastSavedBytes: 0,
+  restored: false, restoredBytes: 0, restoreMatches: null,
+  syncFailed: false, editAfterOffline: null,
+  pasteTextCount: 0, pasteImageCount: 0, pasteImageBytes: 0, pasteErrors: 0,
+  asyncClipboardAvailable: !!(navigator.clipboard && navigator.clipboard.read),
+  storagePersisted: null, storageQuota: null,
+};
+
+function setStatus() {
+  statusEl.textContent = `已载入=${M.loaded ? M.loaded.path + '(' + M.loaded.bytes + 'B,' + M.loaded.ms + 'ms)' : '无'} | ` +
+    `延迟样本=${M.latencies.length} | 保存=${M.saves}/错误=${M.saveErrors} | 恢复=${M.restored} | ` +
+    `同步失败=${M.syncFailed} | 粘贴文本=${M.pasteTextCount}/图片=${M.pasteImageCount}`;
+}
+
+// ---------- IndexedDB（事务写入，超额/失败必须可见） ----------
+function openDb() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('glmake-trial', 1);
+    req.onupgradeneeded = () => {
+      req.result.createObjectStore('docs', { keyPath: 'id' });
+      req.result.createObjectStore('atts', { keyPath: 'hash' });
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function idbPut(store, value) {
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(store, 'readwrite');
+    tx.objectStore(store).put(value);
+    tx.oncomplete = () => { db.close(); resolve(); };
+    tx.onerror = () => { db.close(); reject(tx.error); };
+    tx.onabort = () => { db.close(); reject(tx.error || new Error('事务中止')); };
+  });
+}
+async function idbGet(store, key) {
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(store, 'readonly');
+    const req = tx.objectStore(store).get(key);
+    req.onsuccess = () => { db.close(); resolve(req.result); };
+    req.onerror = () => { db.close(); reject(req.error); };
+  });
+}
+
+// ---------- 键入延迟：可信 keydown 到可信 input（字符可见） ----------
+let pendingKeyDownAt = null;
+editor.addEventListener('keydown', (e) => {
+  if (e.isTrusted && e.key.length === 1) pendingKeyDownAt = performance.now();
+});
+editor.addEventListener('beforeinput', (e) => {
+  // 非键盘真实输入（如输入法/驱动注入）也以其为起点计时
+  if (e.isTrusted && e.inputType === 'insertText' && pendingKeyDownAt === null) pendingKeyDownAt = performance.now();
+});
+editor.addEventListener('input', (e) => {
+  if (e.isTrusted && pendingKeyDownAt !== null) {
+    M.latencies.push(performance.now() - pendingKeyDownAt);
+    pendingKeyDownAt = null;
+  }
+  scheduleSave();
+});
+
+// ---------- 自动保存（防抖 300 ms，事务写入 IndexedDB） ----------
+let saveTimer = null;
+function scheduleSave() { if (saveTimer) return; saveTimer = setTimeout(() => { saveTimer = null; saveNow(); }, 300); }
+async function saveNow() {
+  const t0 = performance.now();
+  try {
+    const body = editor.value;
+    await idbPut('docs', { id: 'current', body, bytes: new Blob([body]).size, updatedAt: Date.now() });
+    M.saves++; M.lastSaveMs = Math.round((performance.now() - t0) * 100) / 100; M.lastSavedBytes = new Blob([body]).size;
+  } catch (e) {
+    M.saveErrors++;
+  }
+  setStatus();
+}
+
+// ---------- 冷启动恢复 ----------
+async function restore() {
+  try {
+    const doc = await idbGet('docs', 'current');
+    if (doc && typeof doc.body === 'string') {
+      editor.value = doc.body;
+      M.restored = true;
+      M.restoredBytes = doc.bytes;
+      M.restoreMatches = (doc.body.length === editor.value.length);
+    }
+  } catch { M.restored = false; }
+  setStatus();
+}
+
+// ---------- 同步探测：指向不可达端点，模拟断网/服务器不可用 ----------
+async function syncProbe() {
+  try {
+    await fetch('http://127.0.0.1:9/sync', { signal: AbortSignal.timeout(1500) });
+    M.syncFailed = false;
+  } catch { M.syncFailed = true; }
+  // 断网后必须继续编辑并本地保存
+  const before = M.saves;
+  editor.value += '\n离线续编标记 ' + Date.now();
+  await saveNow();
+  M.editAfterOffline = { editingOk: true, savedAfterOffline: M.saves > before };
+  setStatus();
+  return { syncFailed: M.syncFailed, editAfterOffline: M.editAfterOffline };
+}
+
+// ---------- 粘贴：文本与图片（不依赖异步剪贴板 API 的降级路径） ----------
+editor.addEventListener('paste', async (e) => {
+  const items = e.clipboardData && e.clipboardData.items;
+  if (!items) return;
+  for (const it of items) {
+    if (it.type && it.type.startsWith('image/')) {
+      e.preventDefault();
+      try {
+        const file = it.getAsFile();
+        const buf = await file.arrayBuffer();
+        const hash = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', buf)))
+          .map((b) => b.toString(16).padStart(2, '0')).join('');
+        await idbPut('atts', { hash, size: buf.byteLength, type: file.type, data: buf });
+        const pos = editor.selectionStart;
+        const marker = `![粘贴图片](idb:${hash})`;
+        editor.setRangeText(marker, pos, pos, 'end');
+        M.pasteImageCount++; M.pasteImageBytes += buf.byteLength;
+      } catch { M.pasteErrors++; }
+      setStatus();
+      return;
+    }
+  }
+  const text = e.clipboardData.getData('text/plain');
+  if (text) {
+    e.preventDefault();
+    const pos = editor.selectionStart;
+    editor.setRangeText(text, pos, pos, 'end');
+    M.pasteTextCount++;
+    setStatus();
+  }
+});
+
+// ---------- 对外接口 ----------
+window.H = {
+  async loadSample(path) {
+    const t0 = performance.now();
+    const buf = await (await fetch(path)).arrayBuffer();
+    editor.value = new TextDecoder('utf-8').decode(buf);
+    M.loaded = { path, bytes: buf.byteLength, ms: Math.round(performance.now() - t0) };
+    M.latencies = [];
+    setStatus();
+    return M.loaded;
+  },
+  clearEditor() { editor.value = ''; M.latencies = []; setStatus(); },
+  focus() { editor.focus(); },
+  caretToEnd() { editor.setSelectionRange(editor.value.length, editor.value.length); },
+  metrics() {
+    const l = [...M.latencies].sort((a, b) => a - b);
+    const q = (p) => l.length ? l[Math.min(l.length - 1, Math.floor(p * l.length))] : null;
+    return { ...M, latencyCount: l.length, latencyP50ms: q(0.5), latencyP95ms: q(0.95), latencyMaxMs: l.length ? l[l.length - 1] : null };
+  },
+  saveNow, restore, syncProbe,
+  async storageEstimate() {
+    if (navigator.storage && navigator.storage.estimate) {
+      const est = await navigator.storage.estimate();
+      M.storageQuota = est;
+      if (navigator.storage.persist) M.storagePersisted = await navigator.storage.persist();
+    }
+    return { quota: M.storageQuota, persisted: M.storagePersisted };
+  },
+  async wipe() { const dbs = await indexedDB.databases(); for (const d of dbs) indexedDB.deleteDatabase(d.name); },
+};
+
+restore();
+</script>
+</body>
+</html>

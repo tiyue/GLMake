@@ -1,0 +1,61 @@
+{
+  "trial": "REAL",
+  "env": {
+    "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36 Edg/151.0.0.0",
+    "secure": true
+  },
+  "browser": "Microsoft Edge（真实安装，headless）",
+  "E7": {
+    "mb1": {
+      "bytes": 1000000,
+      "n": 30,
+      "p50": 14.399999976158142,
+      "p95": 20.199999928474426,
+      "max": 21.799999952316284,
+      "saves": 13,
+      "saveErrors": 0,
+      "lastSaveMs": 8.7
+    },
+    "mb5": {
+      "bytes": 5000000,
+      "n": 30,
+      "p50": 87.70000004768372,
+      "p95": 132.10000002384186,
+      "max": 132.59999990463257,
+      "saves": 14,
+      "saveErrors": 0,
+      "lastSaveMs": 41.1
+    },
+    "mb10": {
+      "bytes": 10000000,
+      "n": 30,
+      "p50": 180.10000002384186,
+      "p95": 207.89999997615814,
+      "max": 270.10000002384186,
+      "saves": 15,
+      "saveErrors": 0,
+      "lastSaveMs": 76
+    }
+  },
+  "E8": {
+    "savedHash": "c68d79aff2b2393bb1591d8d6d905d829545a5d5b12e5a966827a367f120f564",
+    "restoreHashMatches": true,
+    "offline": {
+      "syncFailed": true,
+      "editAfterOffline": {
+        "editingOk": true,
+        "savedAfterOffline": true
+      }
+    }
+  },
+  "E9": {
+    "text": 1,
+    "image": 1,
+    "errors": 0
+  },
+  "pass": false,
+  "limitations": [
+    "headless Edge；正式门禁仍需有界面环境与人工剪贴板复核",
+    "Firefox 未安装，Safari 需 macOS/真机，属外部阻塞"
+  ]
+}

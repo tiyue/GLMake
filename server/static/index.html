@@ -65,11 +65,15 @@ blockquote { border-left: 3px solid var(--border); margin: 0; padding-left: var(
     <div>
       <button data-act="sync">立即同步（Ctrl+S）</button>
       <button data-act="autosync">自动同步：每 10 分钟（开/关）</button>
+      <button data-act="versions">版本历史</button>
+      <button data-act="export">导出 Markdown</button>
+      <button data-act="export-html">导出 HTML</button>
+      <button data-act="export-pdf">导出 PDF（打印）</button>
+      <button data-act="export-all">全量导出（.glmake.zip）</button>
       <button data-act="theme">主题：light/dark/系统</button>
       <button data-act="font-up">字号 +</button>
       <button data-act="font-down">字号 −</button>
       <button data-act="share">创建只读分享链接</button>
-      <button data-act="export">全量导出</button>
       <button data-act="trash">回收站</button>
       <button data-act="logout">退出登录</button>
       <button data-act="logoutall" class="danger">退出所有设备</button>
@@ -97,6 +101,13 @@ blockquote { border-left: 3px solid var(--border); margin: 0; padding-left: var(
       <div id="status">就绪</div>
     </div>
     <section id="previewPane" aria-label="预览"></section>
+  </div>
+</div>
+<div id="versions" hidden role="dialog" aria-modal="true" style="position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:50">
+  <div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);width:min(560px,94vw);max-height:80vh;display:flex;flex-direction:column;padding:var(--space-3);gap:var(--space-2)">
+    <h3>版本历史（每篇最多 10 个 / 30 天）</h3>
+    <div id="verList" style="overflow:auto;flex:1"></div>
+    <div><button id="verClose">关闭</button></div>
   </div>
 </div>
 <div id="conflict" hidden role="dialog" aria-modal="true">

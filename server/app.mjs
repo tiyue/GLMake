@@ -371,6 +371,26 @@ export async function handle(req, res) {
       if (sub === '/versions' && req.method === 'GET') {
         json(res, 200, { versions: db.prepare('SELECT revision, created_ms, LENGTH(body) size FROM versions WHERE doc_id = ? ORDER BY revision DESC').all(docId) }); return;
       }
+      const verMatch = sub.match(/^\/versions\/(\d+)(\/restore)?$/);
+      if (verMatch) {
+        const rev = Number(verMatch[1]);
+        if (!verMatch[2]) {
+          const v = db.prepare('SELECT revision, created_ms, body FROM versions WHERE doc_id = ? AND revision = ?').get(docId, rev);
+          if (!v) { json(res, 404, { error: 'not_found' }); return; }
+          json(res, 200, v); return;
+        }
+        const v = db.prepare('SELECT v.body, d.title FROM versions v JOIN documents d ON d.doc_id = v.doc_id WHERE v.doc_id = ? AND v.revision = ?').get(docId, rev);
+        if (!v) { json(res, 404, { error: 'not_found' }); return; }
+        const cur = db.prepare('SELECT revision FROM documents WHERE doc_id = ?').get(docId);
+        db.exec('BEGIN');
+        db.prepare('INSERT INTO versions(doc_id, revision, body, created_ms) VALUES (?,?,?,?)').run(docId, cur.revision, db.prepare('SELECT body FROM documents WHERE doc_id = ?').get(docId).body, now());
+        db.prepare('UPDATE documents SET body = ?, revision = revision + 1, updated_ms = ? WHERE doc_id = ?').run(v.body, now(), docId);
+        ftsUpsert(docId, v.title, v.body);
+        recordChange(docId, 'restore-version');
+        db.exec('COMMIT');
+        cleanupVersions();
+        json(res, 200, { ok: true, revision: cur.revision + 1 }); return;
+      }
     }
     if (p === '/api/search') {
       const q = url.searchParams.get('q') || '';

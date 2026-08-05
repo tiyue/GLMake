@@ -64,6 +64,7 @@ function setBody(text) { view.dispatch({ changes: { from: 0, to: view.state.doc.
 let pendingKeyT = null;
 // 开发/验证工具：以 API 文档内容载入编辑器（供门禁复测脚本使用）
 window.__openDoc = async (id) => { await openDoc(id); };
+window.__getBody = () => getBody();
 window.__latStats = () => { const l = [...window.__lat].sort((a, b) => a - b); const q = (p) => l.length ? l[Math.min(l.length - 1, Math.floor(p * l.length))] : null; return { n: l.length, p50: q(0.5), p95: q(0.95), max: l[l.length - 1] }; };
 
 let previewTimer = null, saveTimer = null;
@@ -237,6 +238,63 @@ async function processMermaid() {
   }
 }
 
+// ---------- 版本历史 ----------
+async function openVersions() {
+  if (!current) return;
+  const j = await api(`/api/docs/${current.doc_id}/versions`);
+  const box = $('#verList'); box.innerHTML = '';
+  for (const v of j.versions) {
+    const row = document.createElement('div'); row.style.cssText = 'display:flex;gap:8px;align-items:center;padding:4px 0';
+    const t = document.createElement('span'); t.textContent = `修订 ${v.revision} · ${new Date(v.created_ms).toLocaleString()} · ${v.size} B`; t.style.flex = '1';
+    const b = document.createElement('button'); b.textContent = '恢复此版本';
+    b.onclick = async () => { await api(`/api/docs/${current.doc_id}/versions/${v.revision}/restore`, { method: 'POST' }); $('#versions').hidden = true; await openDoc(current.doc_id); setStatus(`已恢复修订 ${v.revision} 为新版本`); };
+    row.append(t, b); box.appendChild(row);
+  }
+  $('#versions').hidden = false;
+}
+$('#verClose').onclick = () => { $('#versions').hidden = true; };
+
+// ---------- 导出 ----------
+function download(name, content, type) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([content], { type }));
+  a.download = name; a.click(); URL.revokeObjectURL(a.href);
+}
+function exportMarkdown() { if (current) download((current.title || 'doc') + '.md', getBody(), 'text/markdown;charset=utf-8'); }
+function exportHtml() {
+  if (!current) return;
+  const html = `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title>${current.title}</title></head><body>` + $('#previewPane').innerHTML + '</body></html>';
+  download((current.title || 'doc') + '.html', html, 'text/html;charset=utf-8');
+}
+function exportPdf() {
+  if (!current) return;
+  const w = window.open('', '_blank');
+  w.document.write(`<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title>${current.title}</title><link rel="stylesheet" href="/vendor/katex.min.css"></head><body>` + $('#previewPane').innerHTML + '<scr' + 'ipt>setTimeout(()=>window.print(),300)</script></body></html>');
+  w.document.close();
+}
+
+// ---------- 图片粘贴上传 ----------
+function bindPaste() {
+  view.dom.addEventListener('paste', async (e) => {
+    const items = e.clipboardData && e.clipboardData.items;
+    if (!items) return;
+    for (const it of items) {
+      if (it.type && it.type.startsWith('image/')) {
+        e.preventDefault();
+        const file = it.getAsFile();
+        const buf = await file.arrayBuffer();
+        const up = await fetch('/api/attachments', { method: 'POST', body: buf, headers: { 'x-glmake-name': file.name || 'pasted.png', 'x-glmake-mime': file.type } });
+        if (!up.ok) { setStatus('图片上传失败：' + (await up.json()).error); return; }
+        const j = await up.json();
+        const md = `![${file.name || '粘贴图片'}](/api/attachments/${j.hash}?inline=1)`;
+        view.dispatch({ changes: { from: view.state.selection.main.from, insert: md } });
+        setStatus('图片已上传并插入');
+        return;
+      }
+    }
+  });
+}
+
 // ---------- 文档管理 ----------
 async function refreshList() {
   const j = await api('/api/docs');
@@ -289,17 +347,27 @@ $('#sysMenu').addEventListener('click', async (e) => {
   if (act === 'sync') syncNow('手动');
   if (act === 'trash') { const j = await api('/api/docs?deleted=1'); const list = $('#doclist'); list.innerHTML = ''; for (const d of j.docs) { const b = document.createElement('button'); b.textContent = ' ' + d.title; b.onclick = async () => { await api(`/api/docs/${d.doc_id}/restore`, { method: 'POST' }); refreshList(); }; list.appendChild(b); } }
   if (act === 'share') { if (current) { const r = await api('/api/shares', { method: 'POST', body: JSON.stringify({ doc_id: current.doc_id }) }); setStatus('分享链接：' + location.origin + r.url + '（系统菜单可撤销）'); } }
-  if (act === 'export') { await api('/api/export', { method: 'POST' }); setStatus('导出完成'); }
+  if (act === 'export') { exportMarkdown(); }
+  if (act === 'export-html') { exportHtml(); }
+  if (act === 'export-pdf') { exportPdf(); }
+  if (act === 'export-all') { await api('/api/export', { method: 'POST' }); setStatus('全量导出完成'); }
+  if (act === 'versions') { openVersions(); }
   if (act === 'logout') { await api('/api/logout', { method: 'POST' }); location.reload(); }
   if (act === 'logoutall') { await api('/api/logout-all', { method: 'POST' }); location.reload(); }
 });
+
+// ---------- 窄屏工具栏 ----------
+const mq = matchMedia('(max-width: 900px)');
+function syncToggle() { $('#btnMenuToggle').hidden = !mq.matches; }
+syncToggle(); mq.addEventListener('change', syncToggle);
+$('#btnMenuToggle').onclick = () => $('#sidebar').classList.toggle('show');
 
 // ---------- 认证 ----------
 async function boot() {
   try {
     await api('/api/docs');
     $('#auth').hidden = true; $('#main').hidden = false;
-    createEditor(); applyTheme(); applyFont(); restorePending(); refreshList();
+    createEditor(); applyTheme(); applyFont(); restorePending(); refreshList(); bindPaste();
     setStatus(settings.autoSync ? '自动同步已开启' : '就绪（Ctrl+S 手动同步）');
   } catch (e) { console.error('boot 失败：', e); $('#auth').hidden = false; $('#main').hidden = true; $('#authMsg').textContent = 'boot 失败：' + e.message; }
 }

@@ -79,6 +79,24 @@ test('更新：base_revision 正确成功、落后 409 冲突、相同幂等键�
   assert.equal(cur.body.revision, 3);
 });
 
+test('版本历史：列表、读取、恢复为新修订', async () => {
+  const list = await api('/api/docs/d1/versions');
+  assert.equal(list.status, 200);
+  assert.ok(list.body.versions.length >= 2);
+  const old = list.body.versions[list.body.versions.length - 1];
+  const v = await api(`/api/docs/d1/versions/${old.revision}`);
+  assert.equal(v.status, 200);
+  assert.ok(v.body.body.includes('文档一'));
+  const before = (await api('/api/docs/d1')).body.revision;
+  const rs = await api(`/api/docs/d1/versions/${old.revision}/restore`, { method: 'POST' });
+  assert.equal(rs.status, 200);
+  assert.equal(rs.body.revision, before + 1);
+  const cur = await api('/api/docs/d1');
+  assert.equal(cur.body.body, v.body.body);
+  // 写回后续测试依赖的状态
+  await api('/api/docs/d1', { method: 'PUT', body: JSON.stringify({ base_revision: cur.body.revision, body: '# 文档一\n\n第三版。', request_id: 'req-restore-back' }) });
+});
+
 test('单篇正文超 10 MB 上限被拒绝', async () => {
   const big = 'x'.repeat(10_000_001);
   const r = await api('/api/docs', { method: 'POST', body: JSON.stringify({ title: '超限', body: big }) });

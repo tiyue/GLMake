@@ -73,7 +73,7 @@ const rate = new Map();
 function rateLimited(ip) {
   const t = now(); const arr = (rate.get(ip) || []).filter((x) => x > t - 60_000);
   arr.push(t); rate.set(ip, arr);
-  return arr.length > 5;
+  return arr.length > 10;
 }
 
 // ---------- 凭据 ----------
@@ -286,6 +286,22 @@ export async function handle(req, res) {
       if (!b.username || typeof b.password !== 'string' || b.password.length < 8) { json(res, 400, { error: '用户名或密码不符合要求（密码至少 8 位）' }); return; }
       const recovery = createOwner(b.username, b.password);
       json(res, 201, { ok: true, recoveryCode: recovery, warning: '恢复码仅展示一次，请立即妥善保存' }); return;
+    }
+    if (p === '/api/recover' && req.method === 'POST') {
+      if (!ownerExists()) { json(res, 409, { error: '尚未初始化' }); return; }
+      if (rateLimited(ip)) { json(res, 429, { error: '请求过频' }); return; }
+      const b = JSON.parse(await readBody(req, 10_000));
+      const cfg = JSON.parse(fs.readFileSync(CONFIG, 'utf8'));
+      if (sha256(Buffer.from(b.code || '')) !== cfg.recoveryHash) { json(res, 401, { error: '恢复码错误' }); return; }
+      const newCode = crypto.randomBytes(24).toString('hex');
+      cfg.recoveryHash = sha256(Buffer.from(newCode));
+      fs.writeFileSync(CONFIG, JSON.stringify(cfg, null, 2), { mode: 0o600 });
+      db.prepare('INSERT INTO recovery(code_hash, created_ms, used_ms) VALUES (?,?,?)').run(sha256(Buffer.from(b.code)), cfg.createdAt, now());
+      db.prepare('UPDATE sessions SET revoked_ms = ?').run(now()); // 恢复即撤销全部既有会话
+      const token = newSession();
+      json(res, 200, { ok: true, newRecoveryCode: newCode, warning: '旧恢复码已作废，新恢复码仅展示一次，请立即抄存' },
+        { 'Set-Cookie': `glmake_sid=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${LIMITS.sessionAgeMs / 1000}` });
+      return;
     }
     if (p === '/api/login' && req.method === 'POST') {
       if (!ownerExists()) { json(res, 409, { error: '尚未初始化' }); return; }

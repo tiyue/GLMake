@@ -417,7 +417,22 @@ async function boot() {
     setStatus(settings.autoSync ? '自动同步已开启' : '就绪（Ctrl+S 手动同步）');
   } catch (e) { console.error('boot 失败：', e); $('#auth').hidden = false; $('#main').hidden = true; $('#authMsg').textContent = 'boot 失败：' + e.message; }
 }
+$('#authToggleRecover').onclick = () => {
+  const inp = $('#authRecover');
+  inp.hidden = !inp.hidden;
+  $('#authToggleRecover').textContent = inp.hidden ? '忘记密码？使用恢复码' : '返回密码登录';
+};
 $('#authSubmit').onclick = async () => {
+  const m = $('#authMsg');
+  if (!$('#authRecover').hidden && $('#authRecover').value.trim()) {
+    try {
+      const r = await api('/api/recover', { method: 'POST', body: JSON.stringify({ code: $('#authRecover').value.trim() }) });
+      m.style.color = 'var(--accent)';
+      m.textContent = '恢复登录成功。新恢复码：' + r.newRecoveryCode + '（仅展示一次，请立即抄存）';
+      boot();
+    } catch (e) { m.style.color = 'var(--danger)'; m.textContent = e.message; }
+    return;
+  }
   const cred = { username: $('#authUser').value, password: $('#authPass').value };
   try { await api('/api/login', { method: 'POST', body: JSON.stringify(cred) }); boot(); }
   catch (e) {

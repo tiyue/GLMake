@@ -128,7 +128,9 @@ blockquote { border-left: 3px solid var(--border); margin: 0; padding-left: 12px
   <h2 id="authTitle">登录</h2>
   <input id="authUser" placeholder="用户名" autocomplete="username">
   <input id="authPass" type="password" placeholder="密码" autocomplete="current-password">
+  <input id="authRecover" placeholder="恢复码（忘记密码时使用）" hidden>
   <button id="authSubmit" style="border:1px solid var(--border)">登录</button>
+  <button id="authToggleRecover" style="font-size:12px;color:var(--muted)">忘记密码？使用恢复码</button>
   <p id="authMsg" style="color:var(--danger);min-height:1.2em"></p>
 </div>
 

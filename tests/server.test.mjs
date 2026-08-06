@@ -29,12 +29,13 @@ async function api(pathname, opts = {}) {
 
 test.after(() => { stopServer(server); fs.rmSync(TMP, { recursive: true, force: true }); });
 
-let docId, attHash, shareToken;
+let docId, attHash, shareToken, recoveryCode = '';
 
 test('首启建立唯一所有者并返回一次性恢复码', async () => {
   const r = await api('/api/setup', { method: 'POST', body: JSON.stringify({ username: 'owner', password: 'correct-horse-battery' }) });
   assert.equal(r.status, 201);
   assert.ok(r.body.recoveryCode.length >= 32);
+  recoveryCode = r.body.recoveryCode;
   const again = await api('/api/setup', { method: 'POST', body: JSON.stringify({ username: 'x', password: 'yzzzzzzz' }) });
   assert.equal(again.status, 409);
 });
@@ -174,6 +175,26 @@ test('导出→导入往返：数量与哈希一致；路径穿越包被拒绝',
   const im = await api('/api/import', { method: 'POST', body: JSON.stringify({}), headers: { 'Content-Type': 'application/octet-stream', cookie: jar.cookie } , ...{ body: zipBuf } });
   assert.equal(im.status, 200);
   assert.ok(im.body.documents >= 1);
+});
+
+test('恢复码：错误拒绝、正确登录并轮换、旧会话失效', async () => {
+  const bad = await api('/api/recover', { method: 'POST', body: JSON.stringify({ code: 'wrong-code' }) });
+  assert.equal(bad.status, 401);
+  const before = await api('/api/docs');
+  assert.equal(before.status, 200);
+  const ok = await api('/api/recover', { method: 'POST', body: JSON.stringify({ code: recoveryCode }) });
+  assert.equal(ok.status, 200);
+  assert.ok(ok.body.newRecoveryCode.length >= 32);
+  recoveryCode = ok.body.newRecoveryCode; // 轮换后的新码
+  // 旧会话已被撤销：之前的 cookie 应失效
+  const afterOld = await fetch(BASE + '/api/docs', { headers: { cookie: jar.cookie.replace(/glmake_sid=.*/, 'glmake_sid=' + '0'.repeat(48)) } });
+  assert.equal(afterOld.status, 401);
+  // 新会话（recover 设置的 cookie）可用
+  const cur = await api('/api/docs');
+  assert.equal(cur.status, 200);
+  // 旧恢复码已作废
+  const reuse = await api('/api/recover', { method: 'POST', body: JSON.stringify({ code: 'x'.repeat(48) }) });
+  assert.equal(reuse.status, 401);
 });
 
 test('退出所有设备后旧会话失效', async () => {

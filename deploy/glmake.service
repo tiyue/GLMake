@@ -1,0 +1,21 @@
+# /etc/systemd/system/glmake.service
+# 用法：cp deploy/glmake.service /etc/systemd/system/ && systemctl daemon-reload
+#       systemctl enable --now glmake
+[Unit]
+Description=GLMake (single-user Markdown writing & sync server)
+After=network.target
+
+[Service]
+Type=simple
+Environment=GLMAKE_DATA=/var/lib/glmake
+Environment=PORT=8899
+ExecStart=/usr/local/bin/node --no-warnings /opt/glmake/server/app.mjs
+Restart=on-failure
+RestartSec=2
+# 安全加固：限制服务只读写数据目录
+ProtectSystem=full
+ReadWritePaths=/var/lib/glmake
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

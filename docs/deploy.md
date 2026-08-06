@@ -66,17 +66,11 @@ GLMAKE_DATA=/var/lib/glmake PORT=80 nohup node --no-warnings server/app.mjs > /v
 
 ## 6. 升级与回滚
 
-```ini
-# /etc/systemd/system/glmake.service
-[Unit]
-Description=GLMake
-After=network.target
-[Service]
-Environment=GLMAKE_DATA=/var/lib/glmake PORT=8787
-ExecStart=/usr/local/bin/node /opt/glmake/server/app.mjs
-Restart=on-failure
-[Install]
-WantedBy=multi-user.target
+进程管理使用仓库内 `deploy/glmake.service`（含 ReadWritePaths 等安全加固）：
+
+```bash
+cp /opt/glmake/deploy/glmake.service /etc/systemd/system/
+systemctl daemon-reload && systemctl enable --now glmake
 ```
 
 - 升级：`git fetch && git checkout <tag>` → `systemctl restart glmake`。schema 只增不删列，

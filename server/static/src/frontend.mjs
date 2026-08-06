@@ -47,6 +47,7 @@ function createEditor() {
         basicSetup, langCompartment.of([]), themeCompartment.of([]),
         EditorView.updateListener.of((u) => {
           if (u.docChanged) {
+            if (suppressEdit) return;
             if (pendingKeyT !== null) { window.__lat.push(performance.now() - pendingKeyT); pendingKeyT = null; }
             onEdit();
           }
@@ -60,7 +61,8 @@ function createEditor() {
   view.dom.addEventListener('keydown', (e) => { if (e.isTrusted && e.key.length === 1) pendingKeyT = performance.now(); });
 }
 const getBody = () => view.state.doc.toString();
-function setBody(text) { view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: text } }); }
+let suppressEdit = false;
+function setBody(text) { suppressEdit = true; view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: text } }); suppressEdit = false; }
 let pendingKeyT = null;
 // 开发/验证工具：以 API 文档内容载入编辑器（供门禁复测脚本使用）
 window.__openDoc = async (id) => { await openDoc(id); };
@@ -113,10 +115,14 @@ document.addEventListener('visibilitychange', () => {
 });
 setInterval(() => {
   if (!settings.autoSync) return;
-  // 条件自动同步：仅当存在待同步更新时写入
-  if (dirty.size > 0) syncNow('自动 10 分钟');
-  else { lastSyncCheck = Date.now(); setStatus('自动同步检查：无更新，未产生写入'); }
+  autoTick('自动 10 分钟');
 }, AUTO_INTERVAL);
+function autoTick(reason) {
+  // 条件自动同步：仅当存在待同步更新时写入；无更新零写入
+  if (dirty.size > 0) syncNow(reason);
+  else { lastSyncCheck = Date.now(); setStatus(`自动同步检查：无更新，未产生写入`); }
+}
+window.__autoTick = autoTick;
 
 // ---------- 冲突四路径 ----------
 async function openConflict(docId, local) {

@@ -261,7 +261,7 @@ export async function handle(req, res) {
     // ----- 静态 -----
     if (p === '/' || p === '/index.html') {
       const html = fs.readFileSync(path.join(HERE, 'static/index.html'));
-      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Content-Length': html.length }); res.end(html); return;
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Content-Length': html.length, 'Cache-Control': 'no-store' }); res.end(html); return;
     }
     if (p.startsWith('/vendor/')) {
       const rel = p.slice(1);

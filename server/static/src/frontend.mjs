@@ -87,7 +87,8 @@ function restorePending() {
 }
 
 // ---------- 同步引擎 ----------
-function setStatus(t) { $('#statusChip').textContent = t; }
+function setStatus(t) { $('#statusChip').title = t; $('#statusChip').textContent = t; clearTimeout(setStatus._t); setStatus._t = setTimeout(() => { $('#statusChip').textContent = chipWords(); }, 3000); }
+function chipWords() { const b = getBody(); return ((b.match(/[A-Za-z]+/g) || []).length + (b.match(/[\u4e00-\u9fa5]/g) || []).length) + ' 字'; }
 async function syncNow(reason) {
   if (dirty.size === 0) { setStatus(`同步检查（${reason}）：无更新，未产生写入`); lastSyncCheck = Date.now(); return; }
   let ok = 0, conflicts = 0;
@@ -359,6 +360,7 @@ $('#sysMenu').addEventListener('click', async (e) => {
   if (act === 'font-down') { settings.fontSize = Math.max(12, settings.fontSize - 1); saveSettings(); }
   if (act === 'autosync') { settings.autoSync = !settings.autoSync; saveSettings(); setStatus(settings.autoSync ? '自动同步已开启（每 10 分钟，仅有更新时写入）' : '自动同步已关闭'); }
   if (act === 'settings') openSettings();
+  if (act === 'help') { $('#helpDialog').hidden = false; }
   if (act === 'export') { exportMarkdown(); }
   if (act === 'export-html') { exportHtml(); }
   if (act === 'export-pdf') { exportPdf(); }
@@ -445,10 +447,10 @@ $('#helpClose').onclick = () => { $('#helpDialog').hidden = true; };
 
 function applyEditorPrefs() {
   const map = { dark: ['#202124', '#e8eaed'], warm: ['#36312c', '#ebd1b7'], light: ['#fafafa', '#222222'] };
-  const t = settings.editorTheme || 'dark';
+  const t = settings.editorTheme || 'warm';
   document.documentElement.style.setProperty('--editor-bg', map[t][0]);
   document.documentElement.style.setProperty('--editor-text', map[t][1]);
-  const fam = { default: '', pt: '"PT Sans", sans-serif', mono: 'Consolas, "Courier New", monospace' }[settings.fontFamily || 'default'];
+  const fam = { default: '', pt: '"PT Sans", "Microsoft YaHei", sans-serif', mono: 'Consolas, "Courier New", monospace' }[settings.fontFamily || 'pt'];
   $('#editorHost').style.fontFamily = fam;
   let tag = document.getElementById('customCssTag');
   if (!tag) { tag = document.createElement('style'); tag.id = 'customCssTag'; document.head.appendChild(tag); }

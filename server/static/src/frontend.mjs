@@ -308,8 +308,15 @@ async function refreshList() {
   for (const d of j.docs) {
     const b = document.createElement('button');
     b.textContent = d.title + (dirty.has(d.doc_id) ? ' ●' : '');
-    if (current && current.doc_id === d.doc_id) b.classList.add('active');
-    b.onclick = () => openDoc(d.doc_id);
+    if (batchMode) {
+      const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = sel.has(d.doc_id); cb.style.marginRight = '8px';
+      cb.onclick = (e) => { e.stopPropagation(); cb.checked ? sel.add(d.doc_id) : sel.delete(d.doc_id); };
+      b.prepend(cb);
+      b.onclick = () => { cb.checked = !cb.checked; cb.checked ? sel.add(d.doc_id) : sel.delete(d.doc_id); };
+    } else {
+      if (current && current.doc_id === d.doc_id) b.classList.add('active');
+      b.onclick = () => openDoc(d.doc_id);
+    }
     list.appendChild(b);
   }
 }
@@ -351,6 +358,7 @@ $('#sysMenu').addEventListener('click', async (e) => {
   if (act === 'font-up') { settings.fontSize = Math.min(20, settings.fontSize + 1); saveSettings(); }
   if (act === 'font-down') { settings.fontSize = Math.max(12, settings.fontSize - 1); saveSettings(); }
   if (act === 'autosync') { settings.autoSync = !settings.autoSync; saveSettings(); setStatus(settings.autoSync ? '自动同步已开启（每 10 分钟，仅有更新时写入）' : '自动同步已关闭'); }
+  if (act === 'settings') openSettings();
   if (act === 'export') { exportMarkdown(); }
   if (act === 'export-html') { exportHtml(); }
   if (act === 'export-pdf') { exportPdf(); }
@@ -400,6 +408,85 @@ $('#docMenu').addEventListener('click', async (e) => {
   }
 });
 
+let batchMode = false; const sel = new Set();
+
+// ---------- 统计 / 目录 / 帮助 / 设置 / 批量（马克飞象式细节） ----------
+function updateStats() {
+  const b = getBody();
+  $('#stChars').textContent = b.length;
+  $('#stWords').textContent = (b.match(/[A-Za-z]+/g) || []).length + (b.match(/[\u4e00-\u9fa5]/g) || []).length;
+  $('#stParas').textContent = b.split(/\n{2,}/).filter((p) => p.trim()).length;
+}
+$('#statusChip').addEventListener('click', () => { updateStats(); $('#statsDrop').hidden = !$('#statsDrop').hidden; });
+function updateToc() {
+  const list = $('#tocList'); list.innerHTML = '';
+  const heads = [];
+  getBody().split('\n').forEach((ln) => { const m = ln.match(/^(#{1,4})\s+(.*)/); if (m) heads.push({ lv: m[1].length, t: m[2] }); });
+  heads.forEach((h, i) => {
+    const b = document.createElement('button');
+    b.style.display = 'block'; b.style.paddingLeft = (h.lv - 1) * 10 + 'px'; b.textContent = h.t;
+    b.onclick = () => { const els = document.querySelectorAll('#previewPane h1, #previewPane h2, #previewPane h3, #previewPane h4'); if (els[i]) els[i].scrollIntoView(); };
+    list.appendChild(b);
+  });
+  if (!heads.length) list.innerHTML = '<span style="opacity:.6">（无标题）</span>';
+}
+$('#btnToc').onclick = () => { updateToc(); $('#tocDrop').hidden = !$('#tocDrop').hidden; };
+
+document.addEventListener('keydown', (e) => {
+  const c = e.ctrlKey || e.metaKey; if (!c) return;
+  const k = e.key.toLowerCase();
+  if (k === 'o') { e.preventDefault(); $('#drawer').classList.toggle('open'); refreshList(); }
+  else if (k === '/') { e.preventDefault(); $('#helpDialog').hidden = !$('#helpDialog').hidden; }
+  else if (e.key === 'Enter' && !e.altKey) { e.preventDefault(); $('#btnFull').click(); }
+  else if (e.altKey && k === 'n') { e.preventDefault(); $('#btnNew').click(); }
+  else if (k === 'm') { e.preventDefault(); $('#sysMenu').classList.toggle('open'); }
+});
+$('#helpClose').onclick = () => { $('#helpDialog').hidden = true; };
+
+function applyEditorPrefs() {
+  const map = { dark: ['#202124', '#e8eaed'], warm: ['#36312c', '#ebd1b7'], light: ['#fafafa', '#222222'] };
+  const t = settings.editorTheme || 'dark';
+  document.documentElement.style.setProperty('--editor-bg', map[t][0]);
+  document.documentElement.style.setProperty('--editor-text', map[t][1]);
+  const fam = { default: '', pt: '"PT Sans", sans-serif', mono: 'Consolas, "Courier New", monospace' }[settings.fontFamily || 'default'];
+  $('#editorHost').style.fontFamily = fam;
+  let tag = document.getElementById('customCssTag');
+  if (!tag) { tag = document.createElement('style'); tag.id = 'customCssTag'; document.head.appendChild(tag); }
+  tag.textContent = settings.customCss || '';
+}
+function openSettings() {
+  $('#setTheme').value = settings.theme; $('#setEditorTheme').value = settings.editorTheme || 'dark';
+  $('#setFontSize').value = settings.fontSize; $('#setFontFamily').value = settings.fontFamily || 'default';
+  $('#setAutoSync').checked = !!settings.autoSync; $('#setCustomCss').value = settings.customCss || '';
+  $('#settingsDialog').hidden = false;
+}
+$('#setClose').onclick = () => {
+  settings.theme = $('#setTheme').value; settings.editorTheme = $('#setEditorTheme').value;
+  settings.fontSize = Math.max(12, Math.min(24, Number($('#setFontSize').value) || 14));
+  settings.fontFamily = $('#setFontFamily').value; settings.autoSync = $('#setAutoSync').checked; settings.customCss = $('#setCustomCss').value;
+  saveSettings(); applyEditorPrefs();
+  $('#settingsDialog').hidden = true;
+};
+
+$('#btnBatch').onclick = () => { batchMode = !batchMode; sel.clear(); $('#batchBar').hidden = !batchMode; refreshList(); };
+$('#bSelAll').onclick = async () => { const j = await api('/api/docs'); j.docs.forEach((d) => sel.add(d.doc_id)); refreshList(); };
+$('#bUnsel').onclick = () => { sel.clear(); refreshList(); };
+$('#bMove').onclick = async () => {
+  const nb = $('#bNotebook').value.trim(); if (!nb || !sel.size) return;
+  for (const id of sel) await api(`/api/docs/${id}/move`, { method: 'POST', body: JSON.stringify({ notebook: nb }) });
+  sel.clear(); refreshList(); setStatus(`已移动 ${sel.size || ''} 篇到 ${nb}`);
+};
+$('#bDel').onclick = async () => {
+  if (!sel.size || !confirm(`删除所选 ${sel.size} 篇到回收站？`)) return;
+  for (const id of sel) await api(`/api/docs/${id}/trash`, { method: 'POST' });
+  sel.clear(); refreshList(); setStatus('已删除到回收站');
+};
+$('#bCreateNb').onclick = async () => {
+  const nb = $('#bNewNb').value.trim(); if (!nb) return;
+  await api('/api/docs', { method: 'POST', body: JSON.stringify({ title: '（占位）', body: '', notebook: nb, request_id: crypto.randomUUID() }) });
+  $('#bNewNb').value = ''; refreshList(); setStatus(`笔记本 ${nb} 已创建`);
+};
+
 // ---------- 认证 ----------
 async function boot() {
   try {
@@ -413,7 +500,7 @@ async function boot() {
     }
     await api('/api/docs');
     $('#auth').hidden = true; $('#main').hidden = false;
-    createEditor(); applyTheme(); applyFont(); restorePending(); refreshList(); bindPaste();
+    createEditor(); applyTheme(); applyFont(); applyEditorPrefs(); restorePending(); refreshList(); bindPaste();
     setStatus(settings.autoSync ? '自动同步已开启' : '就绪（Ctrl+S 手动同步）');
   } catch (e) { console.error('boot 失败：', e); $('#auth').hidden = false; $('#main').hidden = true; $('#authMsg').textContent = 'boot 失败：' + e.message; }
 }

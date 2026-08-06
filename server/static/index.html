@@ -114,6 +114,7 @@ blockquote { border-left: 3px solid var(--border); margin: 0; padding-left: 12px
     <button aria-haspopup="true" title="系统菜单">⚙</button>
     <div>
       <button data-act="autosync">自动同步：每 10 分钟（开/关）</button>
+      <button data-act="settings">设置…</button>
       <button data-act="theme">主题：light/dark/系统</button>
       <button data-act="font-up">字号 +</button>
       <button data-act="font-down">字号 −</button>
@@ -139,8 +140,18 @@ blockquote { border-left: 3px solid var(--border); margin: 0; padding-left: 12px
 <nav id="drawer" aria-label="文档管理">
   <div class="tools">
     <input id="search" placeholder="搜索（≥3 字符）">
+    <button id="btnBatch" title="批量选择">批量</button>
     <button id="btnTrash" title="回收站">回收站</button>
     <button id="btnDrawerClose">关闭</button>
+  </div>
+  <div id="batchBar" hidden style="display:flex;gap:6px;padding:8px 10px;border-bottom:1px solid var(--border);flex-wrap:wrap">
+    <button id="bSelAll">全选</button>
+    <button id="bUnsel">取消全选</button>
+    <input id="bNotebook" placeholder="目标笔记本" style="width:110px">
+    <button id="bMove">移动</button>
+    <button id="bDel" class="danger">删除</button>
+    <input id="bNewNb" placeholder="新建笔记本名" style="width:110px">
+    <button id="bCreateNb">建文件夹</button>
   </div>
   <div id="doclist"></div>
 </nav>
@@ -169,7 +180,64 @@ blockquote { border-left: 3px solid var(--border); margin: 0; padding-left: 12px
   </div>
 </div>
 
+<div id="helpDialog" hidden class="dialog" role="dialog" aria-modal="true">
+  <div>
+    <h3>帮助：语法与快捷键</h3>
+    <div style="overflow:auto;flex:1;font-size:13px">
+      <table>
+        <tr><th>语法</th><th>写法</th><th>快捷键</th></tr>
+        <tr><td>强调</td><td>*斜体* **粗体**</td><td>Ctrl I / B</td></tr>
+        <tr><td>链接</td><td>[描述](url)</td><td>Ctrl L</td></tr>
+        <tr><td>图片</td><td>![描述](url)</td><td>Ctrl G</td></tr>
+        <tr><td>笔记本/标签</td><td>@(笔记本)[标签1|标签2]</td><td>—</td></tr>
+        <tr><td>标题</td><td># ~ ######</td><td>Ctrl 1~5</td></tr>
+        <tr><td>列表/复选框</td><td>- 项 / - [ ] 项</td><td>—</td></tr>
+        <tr><td>引用</td><td>&gt; 文字</td><td>—</td></tr>
+        <tr><td>代码</td><td>`行内` 与 ``` 块</td><td>Ctrl K</td></tr>
+        <tr><td>公式</td><td>$行内$ 与 $$ 块 $$</td><td>—</td></tr>
+        <tr><td>表格</td><td>| a | b |</td><td>Ctrl Alt T</td></tr>
+        <tr><td>图片指令</td><td>![@描述 | left | 300x0](url)</td><td>—</td></tr>
+      </table>
+      <table style="margin-top:8px">
+        <tr><th>操作</th><th>快捷键</th></tr>
+        <tr><td>文档管理</td><td>Ctrl O</td></tr>
+        <tr><td>帮助</td><td>Ctrl /</td></tr>
+        <tr><td>最大化编辑器</td><td>Ctrl Enter</td></tr>
+        <tr><td>同步文档</td><td>Ctrl S</td></tr>
+        <tr><td>创建文档</td><td>Ctrl Alt N</td></tr>
+        <tr><td>系统菜单</td><td>Ctrl M</td></tr>
+      </table>
+    </div>
+    <div class="bar"><button id="helpClose">关闭</button></div>
+  </div>
+</div>
+
+<div id="settingsDialog" hidden class="dialog" role="dialog" aria-modal="true">
+  <div style="width:min(560px,94vw)">
+    <h3>设置</h3>
+    <div style="display:flex;flex-direction:column;gap:10px;font-size:13px">
+      <label>主题 <select id="setTheme"><option value="system">跟随系统</option><option value="light">light</option><option value="dark">dark</option></select></label>
+      <label>编辑器配色 <select id="setEditorTheme"><option value="dark">深色（默认）</option><option value="warm">暖棕（马克飞象式）</option><option value="light">浅色</option></select></label>
+      <label>字号 <input id="setFontSize" type="number" min="12" max="24" style="width:70px"></label>
+      <label>编辑器字体 <select id="setFontFamily"><option value="default">默认</option><option value="pt">PT Sans</option><option value="mono">Consolas/等宽</option></select></label>
+      <label>自动同步（每 10 分钟，仅有更新时写入） <input id="setAutoSync" type="checkbox"></label>
+      <label>自定义预览 CSS<textarea id="setCustomCss" rows="4" placeholder="例如：p { letter-spacing: .02em; }"></textarea></label>
+    </div>
+    <div class="bar" style="margin-top:10px"><button id="setClose">关闭</button></div>
+  </div>
+</div>
+
 <div id="statusChip">就绪</div>
+<div id="statsDrop" hidden style="position:fixed;right:10px;bottom:34px;z-index:16;background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:var(--radius);padding:8px 14px;font-size:12px;box-shadow:0 4px 14px rgba(0,0,0,.2)">
+  <div>字符：<span id="stChars">0</span></div>
+  <div>Words：<span id="stWords">0</span></div>
+  <div>段落：<span id="stParas">0</span></div>
+</div>
+<div id="tocDrop" hidden style="position:fixed;left:8px;bottom:34px;z-index:16;background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:var(--radius);padding:8px 12px;font-size:12px;max-height:50vh;overflow:auto;box-shadow:0 4px 14px rgba(0,0,0,.2)">
+  <div style="opacity:.7;margin-bottom:4px">内容目录</div>
+  <div id="tocList"></div>
+</div>
+<button id="btnToc" style="position:fixed;left:8px;bottom:8px;z-index:15;font-size:12px;color:var(--muted);background:color-mix(in srgb, var(--panel) 85%, transparent);border:1px solid var(--border);border-radius:var(--radius);padding:2px 10px">目录</button>
 <script src="/vendor/app.js"></script>
 </body>
 </html>

@@ -8,9 +8,10 @@
 
 | 文档 | 角色 | 状态 |
 | --- | --- | --- |
-| `docs/project-charter.md` | 立项调研草案（权威：决策、边界、门禁、未知项） | 版本 0.43 |
+| `docs/project-charter.md` | 立项调研草案（权威：决策、边界、门禁、未知项） | 版本 0.48 |
 | `docs/tech-trials-prep.md` | 阶段 2 技术试验准备与执行结论（GLMAKE-TRIAL-001） | 已确认，第 1–4 轮完成 |
 | `docs/tech-design.md` | 技术设计（GLMAKE-DESIGN-001，M1–M4 里程碑） | 开发中 |
+| `docs/maxiang-research.md` | 马克飞象整站调研（GLMAKE-RESEARCH-002，UI 设计依据） | 1.0 |
 | `docs/deploy.md` | 部署/升级/回滚/备份/兼容矩阵 | 1.0 |
 | `docs/privacy.md` | 隐私与风险说明 | 1.0 |
 | `README.md` / `LICENSE` | 公开仓库入口与 Apache-2.0 | 1.0 |

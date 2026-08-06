@@ -369,6 +369,14 @@ export async function handle(req, res) {
         if (r.conflict) { json(res, 409, { conflict: true, serverRevision: r.serverRevision }); return; }
         json(res, 200, { ok: true, revision: r.revision, duplicate: !!r.duplicate }); return;
       }
+      if (sub === '/move' && req.method === 'POST') {
+        const b = JSON.parse(await readBody(req, 10_000));
+        db.prepare('INSERT OR IGNORE INTO notebooks(name) VALUES (?)').run(b.notebook);
+        const nid = db.prepare('SELECT id FROM notebooks WHERE name = ?').get(b.notebook).id;
+        db.prepare('UPDATE documents SET notebook_id = ?, updated_ms = ? WHERE doc_id = ?').run(nid, now(), docId);
+        recordChange(docId, 'move');
+        json(res, 200, { ok: true }); return;
+      }
       if (sub === '/trash' && req.method === 'POST') {
         db.prepare('UPDATE documents SET deleted_ms = ? WHERE doc_id = ?').run(now(), docId);
         recordChange(docId, 'trash'); json(res, 200, { ok: true }); return;

@@ -10,12 +10,13 @@
    navbar #e4ebf1；编辑器 #36312c/#ebd1b7 PT Sans 16px；预览 #2c3f51 Helvetica 16px；
    绿色方形图标按钮（Bootstrap2 btn-success 观感，自绘非复制） */
 :root {
-  --navbar-bg: #e4ebf1; --btn-green: #5bb75b; --btn-green-edge: #4cae4c;
-  --editor-bg: #36312c; --editor-text: #ebd1b7;
-  --preview-bg: #ffffff; --preview-text: #2c3f51;
+  --icon-ed: #e08e2b; --icon-pv: #9aa7b0;
+  --editor-bg: #3b352c; --editor-text: #e5b567;
+  --preview-bg: #ffffff; --preview-text: #34495e;
   --panel: #ffffff; --text: #333; --muted: #7a8a99; --border: #d7e0e7;
   --danger: #b94a48; --bar-h: 50px; --radius: 4px;
   --editor-font: "PT Sans", "Microsoft YaHei", sans-serif; --editor-fs: 16px;
+  --link: #2980b9;
 }
 [data-theme="dark"] {
   --navbar-bg: #23282d; --panel: #262b30; --text: #d6dde3; --muted: #8b98a5; --border: #3a4148;
@@ -32,22 +33,26 @@ input, textarea, select { font: inherit; border: 1px solid var(--border); border
 #editorPane { position: absolute; inset: 0 auto 0 0; width: 50%; background: var(--editor-bg); }
 #editorHost { position: absolute; inset: 0; }
 #editorHost .cm-editor { height: 100%; background: var(--editor-bg); color: var(--editor-text); font-family: var(--editor-font); font-size: var(--editor-fs); }
+#editorHost .cm-gutters { display: none; }
 #editorHost .cm-scroller { padding-top: var(--bar-h); line-height: 1.65; }
 /* 预览：右半顶 50 */
 #previewPane { position: absolute; inset: var(--bar-h) 0 0 50%; overflow: auto; background: var(--preview-bg); color: var(--preview-text); padding: 20px 30px; font-size: 16px; }
+#previewPane a { color: var(--link); }
 body.full-editor #previewPane { display: none; }
 body.full-editor #editorPane { width: 100%; }
 
-/* 工具栏：浅色全宽浮置；绿色方形图标按钮 */
-#toolbar { position: absolute; top: 0; left: 0; right: 0; height: var(--bar-h); background: var(--navbar-bg); z-index: 20; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
-#toolbar .tb { position: absolute; top: 6px; display: flex; gap: 4px; }
-#toolbar .tb-left { left: 4px; }
-#toolbar .tb-mid { left: 50%; transform: translateX(calc(-100% - 4px)); }
-#toolbar .tb-right { right: 8px; }
-.tbtn { width: 46px; height: 38px; border: 1px solid var(--btn-green-edge); border-radius: var(--radius); background: linear-gradient(#62c462, #51a351); color: #fff; font-size: 17px; line-height: 1; text-shadow: 0 -1px 0 rgba(0,0,0,.25); }
-.tbtn:hover { background: linear-gradient(#57ae57, #479647); }
-.tbtn.plain { background: var(--panel); color: var(--muted); border-color: var(--border); text-shadow: none; }
-#docTitle { position: absolute; top: 14px; left: 60px; font-size: 13px; color: var(--muted); max-width: 30vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 工具栏：透明浮置（无背景条），图标直接浮于两栏之上 */
+#toolbar { position: absolute; top: 0; left: 0; right: 0; height: var(--bar-h); background: transparent; z-index: 20; }
+#toolbar .tb { position: absolute; top: 6px; display: flex; gap: 6px; align-items: center; }
+#toolbar .tb-left { left: 6px; }
+#toolbar .tb-mid { left: 50%; transform: translateX(calc(-100% - 10px)); }
+#toolbar .tb-right { right: 10px; }
+.ibtn { width: 38px; height: 38px; border: 0; background: none; font-size: 18px; line-height: 1; border-radius: var(--radius); opacity: .9; }
+.ibtn:hover { opacity: 1; background: rgba(128,128,128,.15); }
+.ibtn.ed { color: var(--icon-ed); }
+.ibtn.pv { color: var(--icon-pv); }
+.ibtn.round { border: 2px solid var(--icon-pv); border-radius: 50%; font-size: 15px; }
+#docTitle { display: none; }
 
 /* 下拉/上弹菜单 */
 .menu { position: relative; }
@@ -58,7 +63,7 @@ body.full-editor #editorPane { width: 100%; }
 .menu.left > div { left: 0; } .menu.right > div { right: 0; }
 
 /* 底部 dropup：左目录、右统计（马克飞象式） */
-.dropup-btn { position: fixed; bottom: 8px; z-index: 15; height: 26px; padding: 0 10px; font-size: 12px; color: #fff; background: linear-gradient(#62c462, #51a351); border: 1px solid var(--btn-green-edge); border-radius: var(--radius); }
+.dropup-btn { position: fixed; bottom: 8px; z-index: 15; height: 24px; padding: 0 8px; font-size: 12px; color: #5a6b78; background: #cfd8de; border: 0; border-radius: 3px; }
 #btnToc { left: 8px; } #statusChip { right: 10px; }
 .popover { position: fixed; bottom: 40px; z-index: 16; background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: 0 3px 10px rgba(0,0,0,.2); padding: 10px 14px; font-size: 12px; }
 #statsDrop { right: 10px; } #tocDrop { left: 8px; max-height: 50vh; overflow: auto; }
@@ -93,6 +98,7 @@ pre { background: #f5f7f8; padding: 8px; overflow: auto; border-radius: var(--ra
 code { background: #f0f2f4; border-radius: 3px; padding: 0 4px; }
 table { border-collapse: collapse; } td, th { border: 1px solid var(--border); padding: 3px 10px; }
 blockquote { border-left: 4px solid #d7e0e7; margin: 0; padding-left: 14px; color: var(--muted); }
+.nb-chip { display: inline-block; background: #e8ecef; color: #7a8a99; border-radius: 3px; padding: 1px 8px; font-size: 13px; margin: 2px 4px 2px 0; }
 @media (max-width: 900px) {
   #editorPane { width: 100%; }
   #previewPane { inset: auto 0 0 0; height: 45%; border-top: 1px solid var(--border); }
@@ -105,12 +111,13 @@ blockquote { border-left: 4px solid #d7e0e7; margin: 0; padding-left: 14px; colo
 
 <header id="toolbar" aria-label="工具栏">
   <div class="tb tb-left">
-    <button id="btnDocs" class="tbtn" title="文档管理">📁</button>
+    <button id="btnDocs" class="ibtn ed" title="文档管理（Ctrl+O）">📁</button>
   </div>
   <span id="docTitle"></span>
   <div class="tb tb-mid">
+    <button id="btnImage" class="ibtn ed" title="插入图片（Ctrl+G）">🖼</button>
     <div class="menu left" id="docMenu">
-      <button class="tbtn" aria-haspopup="true" title="文档菜单">📄</button>
+      <button class="ibtn ed" aria-haspopup="true" title="编辑器主题">✎</button>
       <div>
         <button data-act="versions">版本历史</button>
         <button data-act="share">创建只读分享链接</button>
@@ -121,13 +128,13 @@ blockquote { border-left: 4px solid #d7e0e7; margin: 0; padding-left: 14px; colo
         <button data-act="purge" style="color:var(--danger)">永久删除当前文档</button>
       </div>
     </div>
-    <button id="btnFull" class="tbtn" title="最大化编辑器">⛶</button>
+    <button id="btnFull" class="ibtn ed" title="最大化编辑器（Ctrl+Enter）">⛶</button>
   </div>
   <div class="tb tb-right">
-    <button id="btnSync" class="tbtn" title="本地缓存，点击同步（Ctrl+S）">⇄</button>
-    <button id="btnNew" class="tbtn" title="新建文档（Ctrl+Alt+N）">＋</button>
+    <button id="btnSync" class="ibtn pv" title="本地缓存，点击同步（Ctrl+S）">⚡</button>
+    <button id="btnNew" class="ibtn pv" title="新建文档（Ctrl+Alt+N）">📄</button>
     <div class="menu right" id="sysMenu">
-      <button class="tbtn plain" aria-haspopup="true" title="系统菜单（Ctrl+M）">☰</button>
+      <button class="ibtn pv round" aria-haspopup="true" title="系统菜单（Ctrl+M）">👤</button>
       <div>
         <button data-act="settings">设置</button>
         <button data-act="help">帮助</button>

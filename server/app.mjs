@@ -279,6 +279,18 @@ export async function handle(req, res) {
     // ----- 认证相关 -----
     const ip = req.socket.remoteAddress || 'x';
     if (p === '/api/health') { json(res, 200, { ok: true, initialized: ownerExists() }); return; }
+    if (p === '/api/devlogin' && req.method === 'POST' && process.env.GLMAKE_DEV === '1') {
+      if (!ownerExists()) createOwner('dev', 'dev-only-' + crypto.randomBytes(8).toString('hex'));
+      if (!db.prepare('SELECT 1 FROM documents LIMIT 1').get()) {
+        db.prepare('INSERT OR IGNORE INTO notebooks(name) VALUES (?)').run('示例笔记本');
+        const nid = db.prepare('SELECT id FROM notebooks WHERE name = ?').get('示例笔记本').id;
+        db.prepare('INSERT INTO documents(doc_id, notebook_id, title, body, revision, updated_ms) VALUES (?,?,?,?,1,?)')
+          .run('dev-welcome', nid, '欢迎使用 GLMake', '# 欢迎使用 GLMake\n\n@(示例笔记本)[帮助|Markdown]\n\n**GLMake** 是一款免费开源的 Markdown 编辑器。\n\n- **功能丰富**：代码块、*LaTeX* 公式、流程图、表格；\n- **本地优先**：断网可继续编辑；\n- **同步**：Ctrl+S 手动同步。\n\n## 代码块\n\n```js\nfunction sync(doc) { return doc.revision + 1; }\n```\n\n## 表格\n\n| 项目 | 值 |\n| --- | --- |\n| 门槛 | 100 ms |\n\n行内公式 $E=mc^2$ 与 [链接](https://example.com)。', now());
+      }
+      const token = newSession();
+      json(res, 200, { ok: true }, { 'Set-Cookie': `glmake_sid=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${LIMITS.sessionAgeMs / 1000}` });
+      return;
+    }
     if (p === '/api/setup' && req.method === 'POST') {
       if (ownerExists()) { json(res, 409, { error: '所有者已存在' }); return; }
       if (rateLimited(ip)) { json(res, 429, { error: '请求过频' }); return; }

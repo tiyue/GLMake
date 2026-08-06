@@ -199,6 +199,8 @@ async function renderPreview() {
     }
     if (line.startsWith('```')) { flush(); inCode = true; codeLang = line.slice(3).trim(); continue; }
     if (line.startsWith('\\[')) { flush(); inMath = true; mathBuf = [line]; continue; }
+    const nbm = line.match(/^@\(([^)]*)\)\[([^\]]*)\]\s*$/);
+    if (nbm) { flush(); chunk += '<div>' + ['<span class="nb-chip">' + esc(nbm[1]) + '</span>'].concat(nbm[2].split(/[|,]/).filter(Boolean).map((t) => '<span class="nb-chip">' + esc(t.trim()) + '</span>')).join('') + '</div>'; continue; }
     const h = line.match(/^(#{1,6})\s+(.*)/);
     if (h) { flush(); chunk += `<h${h[1].length}>` + inline(h[2]) + `</h${h[1].length}>`; continue; }
     if (/^>\s?/.test(line)) { flush(); chunk += '<blockquote>' + inline(line.replace(/^>\s?/, '')) + '</blockquote>'; continue; }
@@ -373,6 +375,11 @@ $('#sysMenu').addEventListener('click', async (e) => {
 $('#btnDocs').onclick = () => { $('#drawer').classList.toggle('open'); refreshList(); };
 $('#btnDrawerClose').onclick = () => $('#drawer').classList.remove('open');
 $('#btnSync').onclick = () => syncNow('手动');
+$('#btnImage').onclick = () => {
+  const md = '![描述](图片地址)';
+  view.dispatch({ changes: { from: view.state.selection.main.from, insert: md } });
+  setStatus('已插入图片语法，可替换为附件地址');
+};
 $('#btnFull').onclick = () => {
   document.body.classList.toggle('full-editor');
   $('#btnFull').textContent = document.body.classList.contains('full-editor') ? '❐' : '⛶';
@@ -446,7 +453,7 @@ document.addEventListener('keydown', (e) => {
 $('#helpClose').onclick = () => { $('#helpDialog').hidden = true; };
 
 function applyEditorPrefs() {
-  const map = { dark: ['#202124', '#e8eaed'], warm: ['#36312c', '#ebd1b7'], light: ['#fafafa', '#222222'] };
+  const map = { dark: ['#202124', '#e8eaed'], warm: ['#3b352c', '#e5b567'], light: ['#fafafa', '#222222'] };
   const t = settings.editorTheme || 'warm';
   document.documentElement.style.setProperty('--editor-bg', map[t][0]);
   document.documentElement.style.setProperty('--editor-text', map[t][1]);
@@ -492,6 +499,7 @@ $('#bCreateNb').onclick = async () => {
 // ---------- 认证 ----------
 async function boot() {
   try {
+    if (location.hash === '#devlogin') { await fetch('/api/devlogin', { method: 'POST' }).catch(() => {}); }
     const h = await api('/api/health');
     if (!h.initialized) {
       $('#auth').hidden = false; $('#main').hidden = true;
@@ -503,6 +511,7 @@ async function boot() {
     await api('/api/docs');
     $('#auth').hidden = true; $('#main').hidden = false;
     createEditor(); applyTheme(); applyFont(); applyEditorPrefs(); restorePending(); refreshList(); bindPaste();
+    if (location.hash === '#devlogin') { const j = await api('/api/docs'); if (j.docs && j.docs[0]) await openDoc(j.docs[0].doc_id); }
     setStatus(settings.autoSync ? '自动同步已开启' : '就绪（Ctrl+S 手动同步）');
   } catch (e) { console.error('boot 失败：', e); $('#auth').hidden = false; $('#main').hidden = true; $('#authMsg').textContent = 'boot 失败：' + e.message; }
 }

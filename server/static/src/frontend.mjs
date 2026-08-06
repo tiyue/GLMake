@@ -7,6 +7,12 @@ import mermaid from 'mermaid';
 
 mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', theme: 'neutral' });
 
+// 旧 HTML 缓存自愈：若新版元素缺失（浏览器缓存了旧页面），带参强刷一次拉取 no-store 新 HTML
+if (!document.getElementById('btnImage') && !sessionStorage.getItem('glmake-htmlcb')) {
+  sessionStorage.setItem('glmake-htmlcb', '1');
+  location.replace('/?cb=' + Date.now());
+}
+
 const $ = (s) => document.querySelector(s);
 const api = async (p, opts = {}) => {
   const r = await fetch(p, { headers: { 'Content-Type': 'application/json' }, ...opts });

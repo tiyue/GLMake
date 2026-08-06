@@ -9,8 +9,9 @@
 :root {
   --bg: #fafafa; --panel: #ffffff; --text: #1a1a1a; --muted: #6b6b6b;
   --border: #e2e2e2; --accent: #2f6f4f; --danger: #b3261e;
-  --editor-bg: #202124; --editor-text: #e8eaed; --preview-bg: #ffffff;
-  --radius: 6px; --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
+  --editor-bg: #36312c; --editor-text: #e8eaed; --preview-bg: #ffffff;
+  --bar-bg: rgba(43, 40, 36, .94); --bar-text: #e6e2dc;
+  --radius: 4px; --bar-h: 50px;
   --editor-font-size: 14px;
 }
 [data-theme="dark"] {
@@ -19,98 +20,138 @@
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
-body { margin: 0; font: 14px/1.6 system-ui, "Microsoft YaHei", sans-serif; background: var(--bg); color: var(--text); }
-button { font: inherit; border: 1px solid var(--border); background: var(--panel); color: var(--text); border-radius: var(--radius); padding: var(--space-1) var(--space-3); cursor: pointer; }
+html, body { height: 100%; }
+body { margin: 0; overflow: hidden; font: 14px/1.6 system-ui, "Microsoft YaHei", sans-serif; background: var(--bg); color: var(--text); }
+button { font: inherit; border: 0; background: none; color: inherit; cursor: pointer; border-radius: var(--radius); padding: 5px 9px; }
+button:hover { background: rgba(128,128,128,.2); }
 button.danger { color: var(--danger); }
-input, textarea { font: inherit; border: 1px solid var(--border); border-radius: var(--radius); padding: var(--space-1) var(--space-2); background: var(--panel); color: var(--text); }
-header { display: flex; gap: var(--space-2); align-items: center; padding: var(--space-2) var(--space-4); border-bottom: 1px solid var(--border); background: var(--panel); }
-header h1 { font-size: 16px; margin: 0; }
-header .spacer { flex: 1; }
-#main { display: flex; height: calc(100vh - 49px); }
-#sidebar { width: 260px; border-right: 1px solid var(--border); background: var(--panel); display: flex; flex-direction: column; }
-#sidebar .tools { padding: var(--space-2); display: flex; gap: var(--space-1); flex-wrap: wrap; border-bottom: 1px solid var(--border); }
-#doclist { overflow: auto; flex: 1; }
-#doclist button { display: block; width: 100%; text-align: left; border: 0; border-radius: 0; background: none; padding: var(--space-2) var(--space-3); }
-#doclist button.active { background: var(--bg); font-weight: 600; }
-#work { flex: 1; display: flex; min-width: 0; }
-#editorPane { flex: 1; display: flex; flex-direction: column; min-width: 0; }
-#editorHost { flex: 1; overflow: auto; background: var(--editor-bg); font-size: var(--editor-font-size); }
+input { font: inherit; border: 1px solid var(--border); border-radius: var(--radius); padding: 4px 8px; background: var(--panel); color: var(--text); }
+
+/* 编辑器：左半、全高、深色（工具栏浮于其上） */
+#editorPane { position: absolute; inset: 0 auto 0 0; width: 50%; background: var(--editor-bg); }
+#editorHost { position: absolute; inset: 0; font-size: var(--editor-font-size); }
 #editorHost .cm-editor { height: 100%; background: var(--editor-bg); color: var(--editor-text); }
-#status { padding: var(--space-1) var(--space-3); font-size: 12px; color: var(--muted); border-top: 1px solid var(--border); background: var(--panel); }
-#previewPane { flex: 1; overflow: auto; background: var(--preview-bg); padding: var(--space-4); border-left: 1px solid var(--border); }
-#auth { max-width: 360px; margin: 10vh auto; padding: var(--space-4); background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); display: flex; flex-direction: column; gap: var(--space-2); }
+#editorHost .cm-scroller { padding-top: var(--bar-h); }
+
+/* 预览：右半、顶部让出工具栏、浅色 */
+#previewPane { position: absolute; inset: var(--bar-h) 0 0 50%; overflow: auto; background: var(--preview-bg); padding: 16px 24px; border-left: 1px solid var(--border); }
+body.full-editor #previewPane { display: none; }
+body.full-editor #editorPane { width: 100%; }
+
+/* 浮置工具栏：全宽 50px */
+#toolbar { position: absolute; top: 0; left: 0; right: 0; height: var(--bar-h); display: flex; align-items: center; gap: 2px; padding: 0 8px; background: var(--bar-bg); color: var(--bar-text); z-index: 20; }
+#toolbar button { color: var(--bar-text); font-size: 13px; }
+#toolbar .spacer { flex: 1; }
+#toolbar .sep { width: 1px; height: 22px; background: rgba(255,255,255,.18); margin: 0 6px; }
+#docTitle { margin-left: 8px; font-size: 13px; opacity: .8; max-width: 26vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* 离画文档抽屉（≈385px，滑入） */
+#drawer { position: fixed; top: 0; bottom: 0; left: 0; width: min(385px, 92vw); background: var(--panel); color: var(--text); border-right: 1px solid var(--border); box-shadow: 3px 0 14px rgba(0,0,0,.2); display: flex; flex-direction: column; z-index: 30; transform: translateX(-100%); transition: transform .18s ease; }
+#drawer.open { transform: translateX(0); }
+#drawer .tools { display: flex; gap: 6px; padding: 10px; border-bottom: 1px solid var(--border); }
+#drawer .tools input { flex: 1; min-width: 0; }
+#drawer .tools button { border: 1px solid var(--border); color: var(--text); }
+#doclist { overflow: auto; flex: 1; }
+#doclist button { display: block; width: 100%; text-align: left; padding: 8px 14px; border-radius: 0; color: var(--text); }
+#doclist button.active { background: var(--bg); font-weight: 600; }
+
+/* 下拉菜单 */
 .menu { position: relative; }
-.menu > div { position: absolute; right: 0; top: 100%; background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); display: none; min-width: 200px; z-index: 10; }
+.menu > div { position: absolute; top: 100%; background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius); display: none; min-width: 200px; z-index: 40; box-shadow: 0 4px 14px rgba(0,0,0,.25); }
 .menu.open > div { display: block; }
-.menu > div button { display: block; width: 100%; border: 0; border-radius: 0; text-align: left; }
-pre { background: var(--bg); padding: var(--space-2); overflow: auto; border-radius: var(--radius); }
+.menu > div button { display: block; width: 100%; text-align: left; color: var(--text); padding: 6px 12px; }
+.menu.left > div { left: 0; } .menu.right > div { right: 0; }
+
+/* 模态对话框 */
+.dialog { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: flex; align-items: center; justify-content: center; z-index: 50; }
+.dialog > div { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius); width: min(900px, 94vw); max-height: 84vh; display: flex; flex-direction: column; padding: 14px; gap: 10px; }
+.dialog pre { flex: 1; overflow: auto; white-space: pre-wrap; background: var(--bg); padding: 8px; border-radius: var(--radius); }
+.dialog .cols { display: flex; gap: 8px; flex: 1; min-height: 0; }
+.dialog .bar { display: flex; gap: 8px; flex-wrap: wrap; }
+.dialog .bar button { border: 1px solid var(--border); }
+
+/* 右下状态（字数/同步） */
+#statusChip { position: fixed; right: 10px; bottom: 8px; z-index: 15; font-size: 12px; color: var(--muted); background: color-mix(in srgb, var(--panel) 85%, transparent); border: 1px solid var(--border); border-radius: var(--radius); padding: 2px 10px; }
+
+#auth { max-width: 360px; margin: 12vh auto; padding: 18px; background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); display: flex; flex-direction: column; gap: 10px; }
+
+pre { background: var(--bg); padding: 8px; overflow: auto; border-radius: var(--radius); }
 code { background: var(--bg); border-radius: 3px; padding: 0 4px; }
 table { border-collapse: collapse; } td, th { border: 1px solid var(--border); padding: 2px 8px; }
-blockquote { border-left: 3px solid var(--border); margin: 0; padding-left: var(--space-3); color: var(--muted); }
-#conflict { position: fixed; inset: 0; background: rgba(0,0,0,.4); display: flex; align-items: center; justify-content: center; z-index: 50; }
-#conflict > div { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); width: min(1100px, 94vw); max-height: 86vh; display: flex; flex-direction: column; padding: var(--space-3); gap: var(--space-2); }
-#conflict .cols { display: flex; gap: var(--space-2); flex: 1; min-height: 0; }
-#conflict pre { flex: 1; overflow: auto; white-space: pre-wrap; }
-#conflict .bar { display: flex; gap: var(--space-2); flex-wrap: wrap; }
-@media (max-width: 900px) { #sidebar { display: none; } #sidebar.show { display: flex; position: fixed; inset: 49px 0 0 0; width: 100%; z-index: 5; } #work { flex-direction: column; } #previewPane { border-left: 0; border-top: 1px solid var(--border); } }
+blockquote { border-left: 3px solid var(--border); margin: 0; padding-left: 12px; color: var(--muted); }
+@media (max-width: 900px) {
+  #editorPane { width: 100%; }
+  #previewPane { inset: auto 0 0 0; height: 45%; border-left: 0; border-top: 1px solid var(--border); }
+  body.full-editor #previewPane { display: none; }
+}
 </style>
 </head>
 <body>
-<header>
-  <h1>GLMake</h1>
-  <button id="btnMenuToggle" hidden>文档</button>
-  <span class="spacer"></span>
-  <div class="menu" id="sysMenu">
-    <button aria-haspopup="true">系统菜单</button>
+<div id="editorPane"><div id="editorHost" aria-label="Markdown 编辑区"></div></div>
+<section id="previewPane" aria-label="预览"></section>
+
+<header id="toolbar" aria-label="工具栏">
+  <button id="btnDocs" title="文档管理">☰</button>
+  <div class="menu left" id="docMenu">
+    <button aria-haspopup="true" title="文档菜单">文档 ▾</button>
     <div>
-      <button data-act="sync">立即同步（Ctrl+S）</button>
-      <button data-act="autosync">自动同步：每 10 分钟（开/关）</button>
       <button data-act="versions">版本历史</button>
+      <button data-act="share">创建只读分享链接</button>
       <button data-act="export">导出 Markdown</button>
       <button data-act="export-html">导出 HTML</button>
       <button data-act="export-pdf">导出 PDF（打印）</button>
-      <button data-act="export-all">全量导出（.glmake.zip）</button>
+      <button data-act="trash">回收站</button>
+      <button data-act="purge" class="danger">永久删除当前文档</button>
+    </div>
+  </div>
+  <button id="btnFull" title="最大化编辑器（隐藏预览）"></button>
+  <span id="docTitle"></span>
+  <span class="spacer"></span>
+  <button id="btnSync" title="手动同步（Ctrl+S）">⇄ <span id="syncLabel">本地已保存，点击同步</span></button>
+  <span class="sep"></span>
+  <button id="btnNew" title="新建文档">＋</button>
+  <div class="menu right" id="sysMenu">
+    <button aria-haspopup="true" title="系统菜单">⚙</button>
+    <div>
+      <button data-act="autosync">自动同步：每 10 分钟（开/关）</button>
       <button data-act="theme">主题：light/dark/系统</button>
       <button data-act="font-up">字号 +</button>
       <button data-act="font-down">字号 −</button>
-      <button data-act="share">创建只读分享链接</button>
-      <button data-act="trash">回收站</button>
+      <button data-act="export-all">全量导出 .glmake.zip</button>
       <button data-act="logout">退出登录</button>
       <button data-act="logoutall" class="danger">退出所有设备</button>
     </div>
   </div>
 </header>
+
 <div id="auth" hidden>
-  <h2>登录</h2>
+  <h2 id="authTitle">登录</h2>
   <input id="authUser" placeholder="用户名" autocomplete="username">
   <input id="authPass" type="password" placeholder="密码" autocomplete="current-password">
-  <button id="authSubmit">登录</button>
+  <button id="authSubmit" style="border:1px solid var(--border)">登录</button>
   <p id="authMsg" style="color:var(--danger);min-height:1.2em"></p>
 </div>
-<div id="main" hidden>
-  <nav id="sidebar" aria-label="文档管理">
-    <div class="tools">
-      <button id="btnNew">新建</button>
-      <input id="search" placeholder="搜索（≥3 字符）" style="flex:1;min-width:80px">
-    </div>
-    <div id="doclist"></div>
-  </nav>
-  <div id="work">
-    <div id="editorPane">
-      <div id="editorHost" aria-label="Markdown 编辑区"></div>
-      <div id="status">就绪</div>
-    </div>
-    <section id="previewPane" aria-label="预览"></section>
+
+<div id="main" hidden></div>
+
+<nav id="drawer" aria-label="文档管理">
+  <div class="tools">
+    <input id="search" placeholder="搜索（≥3 字符）">
+    <button id="btnTrash" title="回收站">回收站</button>
+    <button id="btnDrawerClose">关闭</button>
   </div>
-</div>
-<div id="versions" hidden role="dialog" aria-modal="true" style="position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:50">
-  <div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);width:min(560px,94vw);max-height:80vh;display:flex;flex-direction:column;padding:var(--space-3);gap:var(--space-2)">
+  <div id="doclist"></div>
+</nav>
+
+<div id="versions" hidden class="dialog" role="dialog" aria-modal="true">
+  <div>
     <h3>版本历史（每篇最多 10 个 / 30 天）</h3>
     <div id="verList" style="overflow:auto;flex:1"></div>
-    <div><button id="verClose">关闭</button></div>
+    <div class="bar"><button id="verClose">关闭</button></div>
   </div>
 </div>
-<div id="conflict" hidden role="dialog" aria-modal="true">
+
+<div id="conflict" hidden class="dialog" role="dialog" aria-modal="true">
   <div>
     <h3 id="cfTitle">冲突</h3>
     <div class="cols">
@@ -125,6 +166,8 @@ blockquote { border-left: 3px solid var(--border); margin: 0; padding-left: var(
     </div>
   </div>
 </div>
+
+<div id="statusChip">就绪</div>
 <script src="/vendor/app.js"></script>
 </body>
 </html>

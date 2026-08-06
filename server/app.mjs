@@ -278,6 +278,7 @@ export async function handle(req, res) {
 
     // ----- 认证相关 -----
     const ip = req.socket.remoteAddress || 'x';
+    if (p === '/api/health') { json(res, 200, { ok: true, initialized: ownerExists() }); return; }
     if (p === '/api/setup' && req.method === 'POST') {
       if (ownerExists()) { json(res, 409, { error: '所有者已存在' }); return; }
       if (rateLimited(ip)) { json(res, 429, { error: '请求过频' }); return; }

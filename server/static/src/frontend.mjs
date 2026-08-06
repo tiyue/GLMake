@@ -87,7 +87,7 @@ function restorePending() {
 }
 
 // ---------- 同步引擎 ----------
-function setStatus(t) { $('#status').textContent = t; }
+function setStatus(t) { $('#statusChip').textContent = t; }
 async function syncNow(reason) {
   if (dirty.size === 0) { setStatus(`同步检查（${reason}）：无更新，未产生写入`); lastSyncCheck = Date.now(); return; }
   let ok = 0, conflicts = 0;
@@ -316,6 +316,7 @@ async function refreshList() {
 async function openDoc(id) {
   const d = await api('/api/docs/' + id);
   current = { doc_id: id, revision: d.revision, title: d.title };
+  $('#docTitle').textContent = d.title;
   const pend = dirty.get(id);
   const body = pend ? pend.body : d.body;
   view.dispatch({ effects: [langCompartment.reconfigure(body.length <= 1_000_000 ? markdown() : [])] });
@@ -350,27 +351,66 @@ $('#sysMenu').addEventListener('click', async (e) => {
   if (act === 'font-up') { settings.fontSize = Math.min(20, settings.fontSize + 1); saveSettings(); }
   if (act === 'font-down') { settings.fontSize = Math.max(12, settings.fontSize - 1); saveSettings(); }
   if (act === 'autosync') { settings.autoSync = !settings.autoSync; saveSettings(); setStatus(settings.autoSync ? '自动同步已开启（每 10 分钟，仅有更新时写入）' : '自动同步已关闭'); }
-  if (act === 'sync') syncNow('手动');
-  if (act === 'trash') { const j = await api('/api/docs?deleted=1'); const list = $('#doclist'); list.innerHTML = ''; for (const d of j.docs) { const b = document.createElement('button'); b.textContent = ' ' + d.title; b.onclick = async () => { await api(`/api/docs/${d.doc_id}/restore`, { method: 'POST' }); refreshList(); }; list.appendChild(b); } }
-  if (act === 'share') { if (current) { const r = await api('/api/shares', { method: 'POST', body: JSON.stringify({ doc_id: current.doc_id }) }); setStatus('分享链接：' + location.origin + r.url + '（系统菜单可撤销）'); } }
   if (act === 'export') { exportMarkdown(); }
   if (act === 'export-html') { exportHtml(); }
   if (act === 'export-pdf') { exportPdf(); }
   if (act === 'export-all') { await api('/api/export', { method: 'POST' }); setStatus('全量导出完成'); }
-  if (act === 'versions') { openVersions(); }
   if (act === 'logout') { await api('/api/logout', { method: 'POST' }); location.reload(); }
   if (act === 'logoutall') { await api('/api/logout-all', { method: 'POST' }); location.reload(); }
 });
 
-// ---------- 窄屏工具栏 ----------
-const mq = matchMedia('(max-width: 900px)');
-function syncToggle() { $('#btnMenuToggle').hidden = !mq.matches; }
-syncToggle(); mq.addEventListener('change', syncToggle);
-$('#btnMenuToggle').onclick = () => $('#sidebar').classList.toggle('show');
+// ---------- 工具栏直接按钮与文档抽屉 ----------
+$('#btnDocs').onclick = () => { $('#drawer').classList.toggle('open'); refreshList(); };
+$('#btnDrawerClose').onclick = () => $('#drawer').classList.remove('open');
+$('#btnSync').onclick = () => syncNow('手动');
+$('#btnFull').onclick = () => {
+  document.body.classList.toggle('full-editor');
+  $('#btnFull').textContent = document.body.classList.contains('full-editor') ? '❐' : '⛶';
+};
+$('#btnFull').textContent = '⛶';
+let trashMode = false;
+$('#btnTrash').onclick = async () => {
+  trashMode = !trashMode;
+  const list = $('#doclist'); list.innerHTML = '';
+  if (trashMode) {
+    const j = await api('/api/docs?deleted=1');
+    for (const d of j.docs) {
+      const b = document.createElement('button'); b.textContent = '🗑 ' + d.title;
+      b.onclick = async () => { await api(`/api/docs/${d.doc_id}/restore`, { method: 'POST' }); $('#btnTrash').onclick(); };
+      list.appendChild(b);
+    }
+    if (!j.docs.length) list.innerHTML = '<p style="padding:12px;color:var(--muted)">回收站为空</p>';
+  } else refreshList();
+};
+
+// ---------- 文档菜单（马克飞象式：恢复/删除/导出/分享） ----------
+$('#docMenu').addEventListener('click', async (e) => {
+  const act = e.target.dataset.act; if (!act) return;
+  if (act === 'versions') openVersions();
+  if (act === 'share') {
+    if (current) { const r = await api('/api/shares', { method: 'POST', body: JSON.stringify({ doc_id: current.doc_id }) }); setStatus('分享链接：' + location.origin + r.url + '（可撤销）'); }
+  }
+  if (act === 'export') exportMarkdown();
+  if (act === 'export-html') exportHtml();
+  if (act === 'export-pdf') exportPdf();
+  if (act === 'trash') { $('#drawer').classList.add('open'); if (!trashMode) $('#btnTrash').onclick(); }
+  if (act === 'purge' && current && confirm('永久删除当前文档？不可恢复。')) {
+    await api(`/api/docs/${current.doc_id}/purge`, { method: 'POST' });
+    current = null; $('#docTitle').textContent = ''; setBody(''); refreshList(); setStatus('已永久删除');
+  }
+});
 
 // ---------- 认证 ----------
 async function boot() {
   try {
+    const h = await api('/api/health');
+    if (!h.initialized) {
+      $('#auth').hidden = false; $('#main').hidden = true;
+      $('#authTitle').textContent = '首次使用：创建所有者账户';
+      const m = $('#authMsg'); m.style.color = 'var(--muted)';
+      m.textContent = '实例尚未初始化：输入用户名与≥8 位密码即可创建唯一所有者账户；恢复码仅展示一次，请立即抄存。';
+      return;
+    }
     await api('/api/docs');
     $('#auth').hidden = true; $('#main').hidden = false;
     createEditor(); applyTheme(); applyFont(); restorePending(); refreshList(); bindPaste();

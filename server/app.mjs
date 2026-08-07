@@ -4,9 +4,12 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import zlib from 'node:zlib';
 import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
 import { ZipWriter, ZipReader, isSafeEntryName } from './zip64.mjs';
+
+let gzipCache;
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const DATA = path.resolve(process.env.GLMAKE_DATA || path.join(process.cwd(), 'data'));
@@ -270,9 +273,17 @@ export async function handle(req, res) {
       if (!fs.existsSync(file) || !fs.statSync(file).isFile()) { json(res, 404, { error: 'not_found' }); return; }
       const ext = path.extname(file);
       const type = ext === '.js' ? 'text/javascript; charset=utf-8' : ext === '.css' ? 'text/css; charset=utf-8' : ext === '.woff2' ? 'font/woff2' : ext === '.woff' ? 'font/woff' : ext === '.ttf' ? 'font/ttf' : 'application/octet-stream';
-      const buf = fs.readFileSync(file);
-      res.writeHead(200, { 'Content-Type': type, 'Content-Length': buf.length, 'Cache-Control': 'no-cache' });
-      res.end(buf); return;
+      const raw = fs.readFileSync(file);
+      const acceptGz = /\bgzip\b/.test(req.headers['accept-encoding'] || '');
+      if (acceptGz && (ext === '.js' || ext === '.css')) {
+        gzipCache ||= new Map();
+        if (!gzipCache.has(file)) gzipCache.set(file, zlib.gzipSync(raw, { level: 6 }));
+        const gz = gzipCache.get(file);
+        res.writeHead(200, { 'Content-Type': type, 'Content-Length': gz.length, 'Content-Encoding': 'gzip', 'Vary': 'Accept-Encoding', 'Cache-Control': 'no-cache' });
+        res.end(gz); return;
+      }
+      res.writeHead(200, { 'Content-Type': type, 'Content-Length': raw.length, 'Cache-Control': 'no-cache' });
+      res.end(raw); return;
     }
     if (!p.startsWith('/api/')) { json(res, 404, { error: 'not_found' }); return; }
 

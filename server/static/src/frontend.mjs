@@ -12,6 +12,7 @@ if (!document.getElementById('btnImage') && !sessionStorage.getItem('glmake-html
   sessionStorage.setItem('glmake-htmlcb', '1');
   location.replace('/?cb=' + Date.now());
 }
+document.getElementById('boot-splash')?.remove();
 
 const $ = (s) => document.querySelector(s);
 const api = async (p, opts = {}) => {

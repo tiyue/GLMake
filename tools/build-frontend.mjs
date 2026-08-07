@@ -16,7 +16,7 @@ await esbuild.build({
   bundle: true,
   minify: true,
   format: 'iife',
-  target: 'es2022',
+  target: 'es2017',
   outfile: path.join(VENDOR, 'app.js'),
   define: { 'process.env.NODE_ENV': '"production"' },
   logLevel: 'warning',

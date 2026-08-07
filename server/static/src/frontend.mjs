@@ -46,6 +46,8 @@ const langCompartment = new Compartment();
 const darkTheme = EditorView.theme({ '&': { background: 'var(--editor-bg)', color: 'var(--editor-text)' }, '.cm-content': { caretColor: '#fff' } }, { dark: true });
 
 function createEditor() {
+  if (view) { try { view.destroy(); } catch { /* 忽略 */ } }
+  $('#editorHost').innerHTML = '';
   view = new EditorView({
     parent: $('#editorHost'),
     state: EditorState.create({
@@ -82,7 +84,7 @@ function onEdit() {
   clearTimeout(previewTimer);
   previewTimer = setTimeout(renderPreview, big ? 1500 : 200);
   if (big) setStatus('大文档：预览节流中，稍后收敛');
-  clearTimeout(saveTimer); saveTimer = setTimeout(() => { markDirty(); if (!big) setStatus('本地已保存，待同步'); }, 500);
+  clearTimeout(saveTimer); saveTimer = setTimeout(() => { if (mode === 'local') { saveLocalDoc(); } else { markDirty(); if (!big) setStatus('本地已保存，待同步'); } }, 500);
 }
 function markDirty() {
   if (!current) return;
@@ -93,10 +95,42 @@ function restorePending() {
   try { for (const [k, v] of JSON.parse(localStorage.getItem('glmake-pending') || '[]')) dirty.set(k, v); } catch { /* 忽略 */ }
 }
 
+// ---------- 未登录本地模式（立项 §0：未登录可本地写作） ----------
+let mode = 'server';
+function idbOpen() {
+  return new Promise((res, rej) => {
+    const r = indexedDB.open('glmake-local', 1);
+    r.onupgradeneeded = () => { r.result.createObjectStore('docs', { keyPath: 'id' }); };
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  });
+}
+async function idbAllDocs() {
+  const db = await idbOpen();
+  return new Promise((res, rej) => {
+    const q = db.transaction('docs', 'readonly').objectStore('docs').getAll();
+    q.onsuccess = () => res((q.result || []).sort((a, b) => (b.updated || 0) - (a.updated || 0)));
+    q.onerror = () => rej(q.error);
+  });
+}
+async function idbPutDoc(d) {
+  const db = await idbOpen();
+  return new Promise((res, rej) => {
+    const tx = db.transaction('docs', 'readwrite');
+    tx.objectStore('docs').put(d);
+    tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error);
+  });
+}
+async function saveLocalDoc() {
+  if (!current) return;
+  await idbPutDoc({ id: current.doc_id, title: current.title, body: getBody(), updated: Date.now() });
+  setStatus('本地已保存（未登录，仅存此浏览器）');
+}
+
 // ---------- 同步引擎 ----------
 function setStatus(t) { $('#statusChip').title = t; $('#statusChip').textContent = t; clearTimeout(setStatus._t); setStatus._t = setTimeout(() => { $('#statusChip').textContent = chipWords(); }, 3000); }
 function chipWords() { const b = getBody(); return ((b.match(/[A-Za-z]+/g) || []).length + (b.match(/[\u4e00-\u9fa5]/g) || []).length) + ' 字'; }
 async function syncNow(reason) {
+  if (mode === 'local') { $('#auth').hidden = false; $('#authTitle').textContent = '登录'; setStatus('登录后即可同步到服务器'); return; }
   if (dirty.size === 0) { setStatus(`同步检查（${reason}）：无更新，未产生写入`); lastSyncCheck = Date.now(); return; }
   let ok = 0, conflicts = 0;
   for (const [docId, d] of [...dirty.entries()]) {
@@ -313,9 +347,9 @@ function bindPaste() {
 
 // ---------- 文档管理 ----------
 async function refreshList() {
-  const j = await api('/api/docs');
+  const docs = mode === 'local' ? (await idbAllDocs()).map((d) => ({ doc_id: d.id, title: d.title })) : (await api('/api/docs')).docs;
   const list = $('#doclist'); list.innerHTML = '';
-  for (const d of j.docs) {
+  for (const d of docs) {
     const b = document.createElement('button');
     b.textContent = d.title + (dirty.has(d.doc_id) ? ' ●' : '');
     if (batchMode) {
@@ -331,6 +365,15 @@ async function refreshList() {
   }
 }
 async function openDoc(id) {
+  if (mode === 'local') {
+    const docs = await idbAllDocs();
+    const d = docs.find((x) => x.id === id) || docs[0];
+    current = { doc_id: d.id, revision: 0, title: d.title, local: true };
+    view.dispatch({ effects: [langCompartment.reconfigure(d.body.length <= 1_000_000 ? markdown() : [])] });
+    setBody(d.body); renderPreview(); refreshList();
+    setStatus(`已打开：${d.title}（本地模式）`);
+    return;
+  }
   const d = await api('/api/docs/' + id);
   current = { doc_id: id, revision: d.revision, title: d.title };
   $('#docTitle').textContent = d.title;
@@ -344,6 +387,10 @@ async function openDoc(id) {
   setStatus(`已打开：${d.title}（修订 ${d.revision}${pend ? '，含未同步本地修改' : ''}${body.length > 1_000_000 ? '；大文档模式：语法高亮关闭' : ''}）`);
 }
 $('#btnNew').onclick = async () => {
+  if (mode === 'local') {
+    const d = { id: 'local-' + Date.now().toString(36), title: '无标题', body: '# 无标题\n', updated: Date.now() };
+    await idbPutDoc(d); await refreshList(); openDoc(d.id); return;
+  }
   const r = await api('/api/docs', { method: 'POST', body: JSON.stringify({ title: '无标题', body: '# 无标题\n', notebook: '默认笔记本', request_id: crypto.randomUUID() }) });
   await refreshList(); openDoc(r.doc_id);
 };
@@ -369,6 +416,7 @@ $('#sysMenu').addEventListener('click', async (e) => {
   if (act === 'font-down') { settings.fontSize = Math.max(12, settings.fontSize - 1); saveSettings(); }
   if (act === 'autosync') { settings.autoSync = !settings.autoSync; saveSettings(); setStatus(settings.autoSync ? '自动同步已开启（每 10 分钟，仅有更新时写入）' : '自动同步已关闭'); }
   if (act === 'settings') openSettings();
+  if (act === 'login') { $('#auth').hidden = false; $('#authTitle').textContent = '登录'; }
   if (act === 'help') { $('#helpDialog').hidden = false; }
   if (act === 'export') { exportMarkdown(); }
   if (act === 'export-html') { exportHtml(); }
@@ -516,11 +564,24 @@ async function boot() {
       return;
     }
     await api('/api/docs');
+    mode = 'server';
     $('#auth').hidden = true; $('#main').hidden = false;
     createEditor(); applyTheme(); applyFont(); applyEditorPrefs(); restorePending(); refreshList(); bindPaste();
     if (location.hash === '#devlogin') { const j = await api('/api/docs'); if (j.docs && j.docs[0]) await openDoc(j.docs[0].doc_id); }
     setStatus(settings.autoSync ? '自动同步已开启' : '就绪（Ctrl+S 手动同步）');
-  } catch (e) { console.error('boot 失败：', e); $('#auth').hidden = false; $('#main').hidden = true; $('#authMsg').textContent = 'boot 失败：' + e.message; }
+  } catch (e) {
+    // 未登录 → 本地模式（不阻断写作）
+    mode = 'local';
+    $('#auth').hidden = true; $('#main').hidden = false;
+    createEditor(); applyTheme(); applyFont(); applyEditorPrefs(); bindPaste();
+    const docs = await idbAllDocs();
+    if (!docs.length) {
+      const d = { id: 'local-welcome', title: '欢迎使用 GLMake', body: '# 欢迎使用 GLMake\n\n本地模式：内容保存在此浏览器。\n登录后（☰ 菜单 → 登录）即可同步到服务器。', updated: Date.now() };
+      await idbPutDoc(d);
+    }
+    await openDoc((await idbAllDocs())[0].id);
+    setStatus('本地模式（未登录）：可正常写作，登录后同步');
+  }
 }
 $('#authToggleRecover').onclick = () => {
   const inp = $('#authRecover');
